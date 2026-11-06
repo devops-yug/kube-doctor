@@ -1,0 +1,195 @@
+[2026-10-27T01:02:47.876465+00:00] === Bridge started (PID=115969, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-10-27T01:02:47.876775+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"roots":{"listChanged":true},"sampling":{},"elicitation":{"form":{},"url":{}},"tasks":{"list":{},"cancel":{},"requests":{"sampling":{"createMessage":{}},"elicitation":{"create":{}}}},"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}}},"clientInfo":{"name":"Visual Studio Code","version":"1.142.0"}}}
+[2026-10-27T01:02:47.876938+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-10-27T01:02:47.921631+00:00] RECV: {"method":"notifications/initialized","jsonrpc":"2.0"}
+[2026-10-27T01:02:47.921819+00:00] ACK notification: notifications/initialized
+[2026-10-27T01:02:47.921952+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+[2026-10-27T01:02:47.922203+00:00] SEND tools/list (11 tools)
+[2026-10-27T01:07:47.862754+00:00] RECV: {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"pods_get","arguments":{"name":"postgres-ha-0","namespace":"default"},"_meta":{"progressToken":"b86122d3-43db-463c-932c-ce00e099ce04","vscode.conversationId":"06fb43b1-f9ca-40bb-86bf-c250b903abb9","vscode.requestId":"9ef04f2a-93cb-41ca-9db3-bc3eb4ef68b4","traceparent":"00-00000000000000000000000000000004-0000000000000016-01"}}}
+[2026-10-27T01:07:47.895187+00:00] SEND tool result: {"jsonrpc":"2.0","id":3,"result":{"content":[{"text":"{\"jsonrpc\":\"2.0\",\"method\":\"notifications/message\",\"params\":{\"data\":\"Resource not found - it may not exist or may have been deleted\",
+[2026-10-27T01:07:56.738200+00:00] RECV: {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"diagnose_and_remediate_cluster_issue","arguments":{"reason":"OOMKilled","exitCode":137,"namespace":"default","podName":"postgres-ha-0","ownerKind":"StatefulSet","ownerName":"postgres-ha","quotaName":"default-quota","quotaMemoryUsed":"1800Mi","quotaMemoryLimit":"2Gi"},"_meta":{"progressToken":"21a39e21-c878-4e8f-8b4c-4ba7fc274427","vscode.conversationId":"06fb43b1-f9ca-40bb-86bf-c250b903abb9","vscode.requestId":"9ef04f2a-93cb-41ca-9db3-bc3eb4ef68b4","traceparent":"00-00000000000000000000000000000004-000000000000001d-01"}}}
+[2026-10-27T01:07:56.828567+00:00] SEND tool result: {"jsonrpc":"2.0","id":4,"result":{"content":[{"text":"{\n  \"eventId\": \"diag-1793063276744367136\",\n  \"issueType\": \"NAMESPACE_QUOTA_EXCEEDED\",\n  \"criticality\": \"P0-CRITICAL\",\n  \"severity
+[2026-10-27T01:09:04.447921+00:00] RECV: {"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"name":"approve_remediation_request","arguments":{"approvalId":"appr-1793063276-1"},"_meta":{"progressToken":"67e7be26-c4c2-4b4b-9678-a173c8e2a92d","vscode.conversationId":"06fb43b1-f9ca-40bb-86bf-c250b903abb9","vscode.requestId":"1fa09858-23d4-48e9-9c71-648444593f45","traceparent":"00-0000000000000000000000000000002a-0000000000000034-01"}}}
+[2026-10-27T01:09:04.487022+00:00] SEND tool result: {"jsonrpc":"2.0","id":5,"result":{"content":[{"text":"{\n  \"id\": \"appr-1793063276-1\",\n  \"crdName\": \"remediate-default-quota-1\",\n  \"namespace\": \"default\",\n  \"issueType\": \"NAMESPACE_QU
+[2026-10-27T01:36:50.942347+00:00] RECV: {"jsonrpc":"2.0","id":6,"method":"tools/call","params":{"name":"events_list","arguments":{},"_meta":{"progressToken":"0aedd6a0-aac4-4edf-aa82-a2cb3bcec3d3","vscode.conversationId":"06fb43b1-f9ca-40bb-86bf-c250b903abb9","vscode.requestId":"0e5e4227-2575-4ecd-b8c8-0636399399ec","traceparent":"00-00000000000000000000000000000041-000000000000004f-01"}}}
+[2026-10-27T01:36:50.985648+00:00] SEND tool result: {"jsonrpc":"2.0","id":6,"result":{"content":[{"text":"# The following events (YAML format) were found:\n- InvolvedObject:\n    Kind: Node\n    Name: kind-control-plane\n    apiVersion: v1\n  Message: 
+[2026-10-27T22:52:57.794536+00:00] === Bridge started (PID=136156, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-10-27T22:52:57.794748+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"roots":{"listChanged":true},"sampling":{},"elicitation":{"form":{},"url":{}},"tasks":{"list":{},"cancel":{},"requests":{"sampling":{"createMessage":{}},"elicitation":{"create":{}}}},"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}}},"clientInfo":{"name":"Visual Studio Code","version":"1.143.1"}}}
+[2026-10-27T22:52:57.794860+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-10-27T22:52:57.813096+00:00] RECV: {"method":"notifications/initialized","jsonrpc":"2.0"}
+[2026-10-27T22:52:57.813270+00:00] ACK notification: notifications/initialized
+[2026-10-27T22:52:57.813359+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+[2026-10-27T22:52:57.813771+00:00] SEND tools/list (13 tools)
+[2026-10-27T22:53:04.267115+00:00] RECV: {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"pods_top","arguments":{"all_namespaces":true},"_meta":{"progressToken":"cd89797c-8cd3-446c-8623-f418f6d6bbd0","vscode.conversationId":"06fb43b1-f9ca-40bb-86bf-c250b903abb9","vscode.requestId":"8ea8c5ef-65c7-4f40-bca9-1bad67fe614e","traceparent":"00-00000000000000000000000000000002-0000000000000010-01"}}}
+[2026-10-27T22:53:04.362668+00:00] SEND tool result: {"jsonrpc":"2.0","id":3,"result":{"content":[{"text":"failed to get pods top: metrics API is not available","type":"text"}]}}
+[2026-10-27T22:54:31.315105+00:00] === Bridge stdin closed (PID=136156) ===
+[2026-10-27T22:54:31.440278+00:00] === Bridge started (PID=136531, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-10-27T22:54:31.440434+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"roots":{"listChanged":true},"sampling":{},"elicitation":{"form":{},"url":{}},"tasks":{"list":{},"cancel":{},"requests":{"sampling":{"createMessage":{}},"elicitation":{"create":{}}}},"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}}},"clientInfo":{"name":"Visual Studio Code","version":"1.143.1"}}}
+[2026-10-27T22:54:31.440622+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-10-27T22:54:31.445340+00:00] RECV: {"method":"notifications/initialized","jsonrpc":"2.0"}
+[2026-10-27T22:54:31.445465+00:00] ACK notification: notifications/initialized
+[2026-10-27T22:54:31.445514+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+[2026-10-27T22:54:31.445699+00:00] SEND tools/list (13 tools)
+[2026-10-27T22:54:56.236449+00:00] === Bridge stdin closed (PID=136531) ===
+[2026-10-27T22:55:02.753408+00:00] === Bridge started (PID=136651, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-10-27T22:55:02.753676+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"roots":{"listChanged":true},"sampling":{},"elicitation":{"form":{},"url":{}},"tasks":{"list":{},"cancel":{},"requests":{"sampling":{"createMessage":{}},"elicitation":{"create":{}}}},"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}}},"clientInfo":{"name":"Visual Studio Code","version":"1.143.1"}}}
+[2026-10-27T22:55:02.753884+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-10-27T22:55:02.837185+00:00] RECV: {"method":"notifications/initialized","jsonrpc":"2.0"}
+[2026-10-27T22:55:02.837385+00:00] ACK notification: notifications/initialized
+[2026-10-27T22:55:02.837599+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+[2026-10-27T22:55:02.837808+00:00] SEND tools/list (13 tools)
+[2026-10-27T22:55:18.413874+00:00] RECV: {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"pods_top","arguments":{"all_namespaces":true},"_meta":{"progressToken":"a2d1ba0d-bd3b-4648-a562-15439ff3d654","vscode.conversationId":"06fb43b1-f9ca-40bb-86bf-c250b903abb9","vscode.requestId":"6f56aedd-d01e-4a53-abb0-beb917ebd809","traceparent":"00-00000000000000000000000000000022-000000000000002c-01"}}}
+[2026-10-27T22:55:18.432326+00:00] SEND tool result: {"jsonrpc":"2.0","id":3,"result":{"content":[{"text":"failed to get pods top: metrics API is not available","type":"text"}]}}
+[2026-10-27T22:56:52.429991+00:00] === Bridge stdin closed (PID=136651) ===
+[2026-10-27T22:56:52.553118+00:00] === Bridge started (PID=139937, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-10-27T22:56:52.553258+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"roots":{"listChanged":true},"sampling":{},"elicitation":{"form":{},"url":{}},"tasks":{"list":{},"cancel":{},"requests":{"sampling":{"createMessage":{}},"elicitation":{"create":{}}}},"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}}},"clientInfo":{"name":"Visual Studio Code","version":"1.143.1"}}}
+[2026-10-27T22:56:52.553362+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-10-27T22:56:52.558237+00:00] RECV: {"method":"notifications/initialized","jsonrpc":"2.0"}
+[2026-10-27T22:56:52.558358+00:00] ACK notification: notifications/initialized
+[2026-10-27T22:56:52.558406+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+[2026-10-27T22:56:52.558551+00:00] SEND tools/list (13 tools)
+[2026-10-27T22:57:26.511886+00:00] RECV: {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"list_active_incidents","arguments":{},"_meta":{"progressToken":"ee6087ab-7fb4-4f39-b1d4-a3761465f15f","vscode.conversationId":"06fb43b1-f9ca-40bb-86bf-c250b903abb9","vscode.requestId":"9110c8a1-2d9d-4741-a72d-8e17921e31ef","traceparent":"00-00000000000000000000000000000035-000000000000003a-01"}}}
+[2026-10-27T22:57:26.524598+00:00] HTTP forward error: Remote end closed connection without response
+[2026-10-27T22:57:40.614230+00:00] RECV: {"jsonrpc":"2.0","id":4,"method":"tools/call","params":{"name":"events_list","arguments":{},"_meta":{"progressToken":"144b52f2-9642-44ad-a8de-9317dfb7ea1e","vscode.conversationId":"06fb43b1-f9ca-40bb-86bf-c250b903abb9","vscode.requestId":"9110c8a1-2d9d-4741-a72d-8e17921e31ef","traceparent":"00-00000000000000000000000000000035-000000000000003f-01"}}}
+[2026-10-27T22:57:40.615087+00:00] HTTP forward error: <urlopen error [Errno 111] Connection refused>
+[2026-10-27T22:57:52.432197+00:00] === Bridge stdin closed (PID=139937) ===
+[2026-10-27T23:03:49.171463+00:00] RECV: {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+[2026-10-27T23:03:49.171982+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-10-27T23:04:01.461417+00:00] RECV: {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "list_active_incidents", "arguments": {}}}
+[2026-10-27T23:04:01.465694+00:00] Auto-starting kubectl -n kube-doctor-system port-forward svc/kube-doctor 8080:8080
+[2026-10-27T23:04:04.472789+00:00] HTTP forward attempt 1 error: <urlopen error [Errno 111] Connection refused>
+[2026-10-27T23:04:04.790415+00:00] Auto-starting kubectl -n kube-doctor-system port-forward svc/kube-doctor 8080:8080
+[2026-10-27T23:04:07.797864+00:00] HTTP forward attempt 2 error: <urlopen error [Errno 111] Connection refused>
+[2026-10-27T23:04:27.515329+00:00] RECV: {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "list_active_incidents", "arguments": {}}}
+[2026-10-27T23:04:27.536459+00:00] SEND tool result: {"jsonrpc":"2.0","id":3,"result":{"content":[{"text":"{\n  \"incidents\": [],\n  \"pendingApprovals\": [],\n  \"watcherStatus\": {\n    \"lastScanAt\": \"2026-10-27T23:04:23.528677321Z\",\n    \"simul
+[2026-10-27T23:19:51.904604+00:00] === Bridge started (PID=3867, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-10-27T23:19:51.905391+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"roots":{"listChanged":true},"sampling":{},"elicitation":{"form":{},"url":{}},"tasks":{"list":{},"cancel":{},"requests":{"sampling":{"createMessage":{}},"elicitation":{"create":{}}}},"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}}},"clientInfo":{"name":"Visual Studio Code","version":"1.143.1"}}}
+[2026-10-27T23:19:51.905605+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-10-27T23:19:52.001535+00:00] RECV: {"method":"notifications/initialized","jsonrpc":"2.0"}
+[2026-10-27T23:19:52.001713+00:00] ACK notification: notifications/initialized
+[2026-10-27T23:19:52.001783+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+[2026-10-27T23:19:52.001966+00:00] SEND tools/list (13 tools)
+[2026-10-28T16:02:06.986553+00:00] === Bridge started (PID=11719, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-10-28T16:02:06.986995+00:00] RECV: {"jsonrpc":"2.0","id":0,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"copilot-cli","version":"1.0.100-1"},"io.modelcontextprotocol/clientCapabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}}}}}
+[2026-10-28T16:02:07.053009+00:00] SEND tool result: {"jsonrpc":"2.0","id":0,"error":{"code":-32601,"message":"unknown MCP method \"server/discover\""}}
+[2026-10-28T16:02:07.053941+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}},"clientInfo":{"name":"copilot-cli","version":"1.0.100-1"}}}
+[2026-10-28T16:02:07.054530+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-10-28T16:02:07.055033+00:00] RECV: {"jsonrpc":"2.0","method":"notifications/initialized"}
+[2026-10-28T16:02:07.055186+00:00] ACK notification: notifications/initialized
+[2026-10-28T16:02:07.055608+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{"progressToken":0}}}
+[2026-10-28T16:02:07.055886+00:00] SEND tools/list (13 tools)
+[2026-10-28T16:19:53.570443+00:00] === Bridge started (PID=29, argv=['scripts/mcp_stdio_bridge.py']) ===
+[2026-10-28T16:19:53.570985+00:00] RECV: {"jsonrpc": "2.0", "id": 1, "method": "server/discover", "params": {"_meta": {"io.modelcontextprotocol/protocolVersion": "2026-07-28"}}}
+[2026-10-28T16:19:53.571646+00:00] SEND server/discover (17 tools)
+[2026-10-28T16:19:53.572213+00:00] RECV: {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "list_active_incidents", "arguments": {}}}
+[2026-10-28T16:19:53.576469+00:00] Auto-starting kubectl -n kube-doctor-system port-forward svc/kube-doctor 8080:8080
+[2026-10-28T16:19:56.584542+00:00] HTTP forward attempt 1 error: <urlopen error [Errno 111] Connection refused>
+[2026-10-28T16:19:56.900162+00:00] Auto-starting kubectl -n kube-doctor-system port-forward svc/kube-doctor 8080:8080
+[2026-10-28T16:19:59.910181+00:00] HTTP forward attempt 2 error: <urlopen error [Errno 111] Connection refused>
+[2026-10-28T16:19:59.910704+00:00] RECV: {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "pods_list", "arguments": {}}}
+[2026-10-28T16:19:59.911270+00:00] Auto-starting kubectl -n kube-doctor-system port-forward svc/kube-doctor 8080:8080
+[2026-10-28T16:20:02.917607+00:00] HTTP forward attempt 1 error: <urlopen error [Errno 111] Connection refused>
+[2026-10-28T16:20:03.229143+00:00] Auto-starting kubectl -n kube-doctor-system port-forward svc/kube-doctor 8080:8080
+[2026-10-28T16:20:06.235699+00:00] HTTP forward attempt 2 error: <urlopen error [Errno 111] Connection refused>
+[2026-10-28T16:20:06.236035+00:00] === Bridge stdin closed (PID=29) ===
+[2026-10-28T16:21:18.520912+00:00] === Bridge started (PID=16810, argv=['scripts/mcp_stdio_bridge.py']) ===
+[2026-10-28T16:21:18.521035+00:00] RECV: {"jsonrpc": "2.0", "id": 1, "method": "server/discover", "params": {"_meta": {"io.modelcontextprotocol/protocolVersion": "2026-07-28"}}}
+[2026-10-28T16:21:18.521170+00:00] SEND server/discover (17 tools)
+[2026-10-28T16:21:18.521273+00:00] RECV: {"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "list_active_incidents", "arguments": {}}}
+[2026-10-28T16:21:18.540326+00:00] SEND tool result: {"jsonrpc":"2.0","id":2,"result":{"content":[{"text":"{\n  \"incidents\": [],\n  \"pendingApprovals\": [],\n  \"watcherStatus\": {\n    \"lastScanAt\": \"2026-10-28T16:21:12.851922193Z\",\n    \"simul
+[2026-10-28T16:21:18.540494+00:00] RECV: {"jsonrpc": "2.0", "id": 3, "method": "tools/call", "params": {"name": "pods_list", "arguments": {}}}
+[2026-10-28T16:21:18.922548+00:00] SEND tool result: {"jsonrpc":"2.0","id":3,"result":{"content":[{"text":"- apiVersion: v1\n  kind: Pod\n  metadata:\n    creationTimestamp: \"2026-10-27T01:35:16Z\"\n    generateName: oom-demo-\n    generation: 1\n    l
+[2026-10-28T16:21:18.922953+00:00] === Bridge stdin closed (PID=16810) ===
+[2026-10-28T16:25:57.440496+00:00] === Bridge started (PID=23046, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-10-28T16:25:57.440679+00:00] RECV: {"jsonrpc":"2.0","id":0,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"copilot-cli","version":"1.0.100-1"},"io.modelcontextprotocol/clientCapabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}}}}}
+[2026-10-28T16:25:57.440864+00:00] SEND server/discover (17 tools)
+[2026-10-28T16:25:57.441791+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}},"clientInfo":{"name":"copilot-cli","version":"1.0.100-1"}}}
+[2026-10-28T16:25:57.441926+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-10-28T16:25:57.442165+00:00] RECV: {"jsonrpc":"2.0","method":"notifications/initialized"}
+[2026-10-28T16:25:57.442252+00:00] ACK notification: notifications/initialized
+[2026-10-28T16:25:57.442515+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{"progressToken":0}}}
+[2026-10-28T16:25:57.442772+00:00] SEND tools/list (17 tools)
+[2026-10-28T16:25:57.526468+00:00] === Bridge started (PID=23049, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-10-28T16:25:57.526635+00:00] RECV: {"jsonrpc":"2.0","id":0,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"copilot-cli","version":"1.0.100-1"},"io.modelcontextprotocol/clientCapabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}}}}}
+[2026-10-28T16:25:57.526855+00:00] SEND server/discover (17 tools)
+[2026-10-28T16:25:57.527410+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}},"clientInfo":{"name":"copilot-cli","version":"1.0.100-1"}}}
+[2026-10-28T16:25:57.527512+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-10-28T16:25:57.527743+00:00] RECV: {"jsonrpc":"2.0","method":"notifications/initialized"}
+[2026-10-28T16:25:57.527825+00:00] ACK notification: notifications/initialized
+[2026-10-28T16:25:57.528127+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{"progressToken":0}}}
+[2026-10-28T16:25:57.528279+00:00] SEND tools/list (17 tools)
+[2026-10-28T16:26:17.231030+00:00] === Bridge started (PID=23161, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-10-28T16:26:17.231149+00:00] RECV: {"jsonrpc":"2.0","id":0,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"copilot-cli","version":"1.0.100-1"},"io.modelcontextprotocol/clientCapabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}}}}}
+[2026-10-28T16:26:17.231297+00:00] SEND server/discover (17 tools)
+[2026-10-28T16:26:17.231830+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}},"clientInfo":{"name":"copilot-cli","version":"1.0.100-1"}}}
+[2026-10-28T16:26:17.231940+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-10-28T16:26:17.232151+00:00] RECV: {"jsonrpc":"2.0","method":"notifications/initialized"}
+[2026-10-28T16:26:17.232227+00:00] ACK notification: notifications/initialized
+[2026-10-28T16:26:17.232587+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{"progressToken":0}}}
+[2026-10-28T16:26:17.232759+00:00] SEND tools/list (17 tools)
+[2026-10-28T16:26:28.327026+00:00] RECV: {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"_meta":{"progressToken":1},"arguments":{},"name":"pods_list"}}
+[2026-10-28T16:26:28.382513+00:00] SEND tool result: {"jsonrpc":"2.0","id":3,"result":{"content":[{"text":"- apiVersion: v1\n  kind: Pod\n  metadata:\n    creationTimestamp: \"2026-10-27T01:35:16Z\"\n    generateName: oom-demo-\n    generation: 1\n    l
+[2026-10-28T16:26:28.385811+00:00] RECV: {"jsonrpc":"2.0","id":4,"method":"tools/list","params":{"_meta":{"progressToken":2}}}
+[2026-10-28T16:26:28.386020+00:00] SEND tools/list (17 tools)
+[2026-10-28T16:26:29.468037+00:00] RECV: {"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"_meta":{"progressToken":3},"arguments":{},"name":"events_list"}}
+[2026-10-28T16:26:29.528722+00:00] SEND tool result: {"jsonrpc":"2.0","id":5,"result":{"content":[{"text":"# kube-doctor Active Incidents & Autonomous Remediation Summary:\n{\n  \"kubeDoctorIncidents\": [],\n  \"kubeDoctorWatcherStatus\": {\n    \"lastS
+[2026-10-28T16:26:29.529726+00:00] RECV: {"jsonrpc":"2.0","id":6,"method":"tools/list","params":{"_meta":{"progressToken":4}}}
+[2026-10-28T16:26:29.529982+00:00] SEND tools/list (17 tools)
+[2026-10-28T16:26:30.241725+00:00] RECV: {"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"_meta":{"progressToken":5},"arguments":{},"name":"namespaces_list"}}
+[2026-10-28T16:26:30.255426+00:00] SEND tool result: {"jsonrpc":"2.0","id":7,"result":{"content":[{"text":"- apiVersion: v1\n  kind: Namespace\n  metadata:\n    creationTimestamp: \"2026-10-25T02:10:42Z\"\n    labels:\n      kubernetes.io/metadata.name:
+[2026-10-28T16:26:30.256088+00:00] RECV: {"jsonrpc":"2.0","id":8,"method":"tools/list","params":{"_meta":{"progressToken":6}}}
+[2026-10-28T16:26:30.256502+00:00] SEND tools/list (17 tools)
+[2026-10-28T16:27:27.870903+00:00] RECV: {"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"_meta":{"progressToken":7},"arguments":{},"name":"list_active_incidents"}}
+[2026-10-28T16:27:27.878230+00:00] SEND tool result: {"jsonrpc":"2.0","id":9,"result":{"content":[{"text":"{\n  \"incidents\": [],\n  \"pendingApprovals\": [],\n  \"watcherStatus\": {\n    \"lastScanAt\": \"2026-10-28T16:27:22.610861987Z\",\n    \"simul
+[2026-10-28T16:27:27.879021+00:00] RECV: {"jsonrpc":"2.0","id":10,"method":"tools/list","params":{"_meta":{"progressToken":8}}}
+[2026-10-28T16:27:27.879339+00:00] SEND tools/list (17 tools)
+[2026-10-28T16:27:31.036037+00:00] RECV: {"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"_meta":{"progressToken":9},"arguments":{"all_namespaces":true},"name":"pods_top"}}
+[2026-10-28T16:27:31.046211+00:00] SEND tool result: {"jsonrpc":"2.0","id":11,"result":{"content":[{"text":"failed to get pods top: metrics API is not available","type":"text"}]}}
+[2026-10-28T16:27:31.047031+00:00] RECV: {"jsonrpc":"2.0","id":12,"method":"tools/list","params":{"_meta":{"progressToken":10}}}
+[2026-10-28T16:27:31.047342+00:00] SEND tools/list (17 tools)
+[2026-10-28T20:19:55.731591+00:00] === Bridge started (PID=48191, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-10-28T20:19:55.731869+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"roots":{"listChanged":true},"sampling":{},"elicitation":{"form":{},"url":{}},"tasks":{"list":{},"cancel":{},"requests":{"sampling":{"createMessage":{}},"elicitation":{"create":{}}}},"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}}},"clientInfo":{"name":"Visual Studio Code","version":"1.143.1"}}}
+[2026-10-28T20:19:55.732054+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-10-28T20:19:55.775679+00:00] RECV: {"method":"notifications/initialized","jsonrpc":"2.0"}
+[2026-10-28T20:19:55.775813+00:00] ACK notification: notifications/initialized
+[2026-10-28T20:19:55.775864+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+[2026-10-28T20:19:55.776028+00:00] SEND tools/list (20 tools)
+[2026-10-28T20:20:11.600935+00:00] === Bridge started (PID=48278, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-10-28T20:20:11.601085+00:00] RECV: {"jsonrpc":"2.0","id":0,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"copilot-cli","version":"1.0.100-1"},"io.modelcontextprotocol/clientCapabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}}}}}
+[2026-10-28T20:20:11.601297+00:00] SEND server/discover (20 tools)
+[2026-10-28T20:20:11.602548+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}},"clientInfo":{"name":"copilot-cli","version":"1.0.100-1"}}}
+[2026-10-28T20:20:11.602812+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-10-28T20:20:11.603844+00:00] RECV: {"jsonrpc":"2.0","method":"notifications/initialized"}
+[2026-10-28T20:20:11.603955+00:00] ACK notification: notifications/initialized
+[2026-10-28T20:20:11.605450+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{"progressToken":0}}}
+[2026-10-28T20:20:11.605666+00:00] SEND tools/list (20 tools)
+[2026-10-28T20:20:23.422113+00:00] === Bridge started (PID=48340, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-10-28T20:20:23.422236+00:00] RECV: {"jsonrpc":"2.0","id":0,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"copilot-cli","version":"1.0.100-1"},"io.modelcontextprotocol/clientCapabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}}}}}
+[2026-10-28T20:20:23.422395+00:00] SEND server/discover (20 tools)
+[2026-10-28T20:20:23.422986+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}},"clientInfo":{"name":"copilot-cli","version":"1.0.100-1"}}}
+[2026-10-28T20:20:23.423108+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-10-28T20:20:23.423367+00:00] RECV: {"jsonrpc":"2.0","method":"notifications/initialized"}
+[2026-10-28T20:20:23.423451+00:00] ACK notification: notifications/initialized
+[2026-10-28T20:20:23.423656+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{"progressToken":0}}}
+[2026-10-28T20:20:23.423871+00:00] SEND tools/list (20 tools)
+[2026-10-28T20:20:34.950319+00:00] RECV: {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"_meta":{"progressToken":1},"arguments":{},"name":"list_managed_clusters"}}
+[2026-10-28T20:20:34.959419+00:00] SEND tool result: {"jsonrpc":"2.0","id":3,"result":{"content":[{"text":"{\n  \"managedClusters\": [\n    {\n      \"clusterId\": \"kind-local-cluster\",\n      \"displayName\": \"Primary Local Cluster (kind-local-clust
+[2026-10-28T20:20:34.960890+00:00] RECV: {"jsonrpc":"2.0","id":4,"method":"tools/list","params":{"_meta":{"progressToken":2}}}
+[2026-10-28T20:20:34.962079+00:00] SEND tools/list (20 tools)
+[2026-10-29T00:46:19.600904+00:00] === Bridge started (PID=55441, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-10-29T00:46:19.601274+00:00] RECV: {"jsonrpc":"2.0","id":0,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"copilot-cli","version":"1.0.100-1"},"io.modelcontextprotocol/clientCapabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}}}}}
+[2026-10-29T00:46:19.601647+00:00] SEND server/discover (20 tools)
+[2026-10-29T00:46:19.603436+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}},"clientInfo":{"name":"copilot-cli","version":"1.0.100-1"}}}
+[2026-10-29T00:46:19.603626+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-10-29T00:46:19.604130+00:00] RECV: {"jsonrpc":"2.0","method":"notifications/initialized"}
+[2026-10-29T00:46:19.604242+00:00] ACK notification: notifications/initialized
+[2026-10-29T00:46:19.605290+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{"progressToken":0}}}
+[2026-10-29T00:46:19.605610+00:00] SEND tools/list (20 tools)
+[2026-10-30T00:09:03.997281+00:00] === Bridge started (PID=72639, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-10-30T00:09:04.101719+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"roots":{"listChanged":true},"sampling":{},"elicitation":{"form":{},"url":{}},"tasks":{"list":{},"cancel":{},"requests":{"sampling":{"createMessage":{}},"elicitation":{"create":{}}}},"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}}},"clientInfo":{"name":"Visual Studio Code","version":"1.143.1"}}}
+[2026-10-30T00:09:04.102587+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-10-30T00:09:04.639116+00:00] RECV: {"method":"notifications/initialized","jsonrpc":"2.0"}
+[2026-10-30T00:09:04.639251+00:00] ACK notification: notifications/initialized
+[2026-10-30T00:09:04.639328+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+[2026-10-30T00:09:04.640644+00:00] SEND tools/list (20 tools)
+[2026-10-31T00:27:40.189463+00:00] === Bridge stdin closed (PID=72639) ===

@@ -1,0 +1,33 @@
+name: cloudnative-pg
+description: CloudNativePG PostgreSQL Operator (Cluster.postgresql.cnpg.io/v1 + Pooler + Backup + ScheduledBackup)
+primaryGvk:
+  apiVersion: postgresql.cnpg.io/v1
+  kind: Cluster
+  plural: clusters
+  role: rootController
+podLabelKeys:
+  - cnpg.io/cluster
+statusPhasePath: status.phase
+autoRemediateMemory: true
+crdSchemaFields:
+  - path: spec.resources.limits.memory
+    type: string (Quantity)
+    description: Memory limit for PostgreSQL instance pods managed by this Cluster CR (e.g. 512Mi, 2Gi)
+  - path: spec.resources.requests.memory
+    type: string (Quantity)
+    description: Memory request for PostgreSQL instance pods managed by this Cluster CR (e.g. 256Mi, 1Gi)
+  - path: spec.resources.limits.cpu
+    type: string (Quantity)
+    description: CPU limit for PostgreSQL instance pods
+  - path: spec.storage.size
+    type: string (Quantity)
+    description: PGDATA PersistentVolumeClaim storage size for each PostgreSQL instance (e.g. 20Gi, 50Gi)
+  - path: spec.walStorage.size
+    type: string (Quantity)
+    description: Dedicated Write-Ahead Log (WAL) PVC storage size (e.g. 10Gi, 20Gi)
+  - path: spec.instances
+    type: integer
+    description: Number of PostgreSQL instances in the high-availability cluster
+  - path: spec.postgresql.parameters.shared_buffers
+    type: string
+    description: PostgreSQL shared_buffers parameter

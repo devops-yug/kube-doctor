@@ -1,0 +1,59 @@
+# Real OOMKilled StatefulSet + Tight Namespace ResourceQuota Demo
+# 1. Creates namespace "payments-prod" with a tight ResourceQuota (limits.memory: 128Mi)
+# 2. Deploys StatefulSet "postgres-ha" (limits.memory: 32Mi) which allocates 60MiB in /dev/shm and gets OOMKilled (ExitCode 137)
+# 3. kube-doctor's autonomous background watcher detects the OOMKilled pod AND discovers the live ResourceQuota (128Mi),
+#    seeing that bumping memory to 288Mi exceeds the 128Mi ResourceQuota!
+# 4. kube-doctor automatically creates a RemediationRequest CRD + approval request; once approved,
+#    kube-doctor patches BOTH the ResourceQuota and the StatefulSet so postgres-ha-0 becomes 1/1 Running!
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: payments-prod
+---
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: default-quota
+  namespace: payments-prod
+spec:
+  hard:
+    requests.memory: "128Mi"
+    limits.memory: "128Mi"
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-ha
+  namespace: payments-prod
+  labels:
+    app: postgres-ha
+spec:
+  serviceName: postgres-ha
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-ha
+  template:
+    metadata:
+      labels:
+        app: postgres-ha
+    spec:
+      containers:
+        - name: postgres
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Allocating 60MiB in /dev/shm..."
+              dd if=/dev/zero of=/dev/shm/memfill bs=1M count=60
+              echo "Allocation succeeded within cgroup memory limit! Sleeping..."
+              sleep 3600
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "16Mi"
+            limits:
+              cpu: "200m"
+              memory: "32Mi"
+

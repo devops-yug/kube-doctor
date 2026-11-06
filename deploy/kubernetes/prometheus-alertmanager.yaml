@@ -1,0 +1,69 @@
+# PrometheusRule & AlertmanagerConfig for kube-doctor autonomous webhook remediation
+# Compatible with kube-prometheus-stack and OpenShift 4.22+ User Workload / Platform Monitoring
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: kube-doctor-remediation-rules
+  namespace: kube-doctor-system
+  labels:
+    app: kube-doctor
+    role: alert-rules
+spec:
+  groups:
+    - name: kubedoctor.autonomous.rules
+      rules:
+        - alert: KubePodOOMKilled
+          expr: |
+            (kube_pod_container_status_last_terminated_reason{reason="OOMKilled"} == 1)
+            and on(namespace, pod, container)
+            (increase(kube_pod_container_status_restarts_total[5m]) > 0)
+          for: 15s
+          labels:
+            severity: critical
+            reason: OOMKilled
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} ({{ $labels.container }}) was OOMKilled"
+            description: "Container {{ $labels.container }} in pod {{ $labels.namespace }}/{{ $labels.pod }} terminated with OOMKilled (ExitCode 137)."
+
+        - alert: KubeQuotaAlmostFull
+          expr: |
+            (kube_resourcequota{type="used", resource="limits.memory"} / ignoring(type) kube_resourcequota{type="hard", resource="limits.memory"}) > 0.90
+          for: 1m
+          labels:
+            severity: critical
+            reason: ResourceQuotaExceeded
+          annotations:
+            summary: "Namespace {{ $labels.namespace }} ResourceQuota {{ $labels.resourcequota }} is >90% utilized"
+            description: "Namespace {{ $labels.namespace }} memory quota {{ $labels.resourcequota }} is near/at capacity."
+
+        - alert: KubeNodeNotReady
+          expr: |
+            kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 1m
+          labels:
+            severity: critical
+            reason: NodeNotReady
+          annotations:
+            summary: "Node {{ $labels.node }} is NotReady"
+            description: "Kubernetes/OpenShift node {{ $labels.node }} transitioned to NotReady."
+---
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: AlertmanagerConfig
+metadata:
+  name: kube-doctor-webhook
+  namespace: kube-doctor-system
+  labels:
+    app: kube-doctor
+spec:
+  route:
+    receiver: kube-doctor-webhook
+    groupBy: ["alertname", "namespace", "pod"]
+    groupWait: 5s
+    groupInterval: 30s
+    repeatInterval: 15m
+  receivers:
+    - name: kube-doctor-webhook
+      webhookConfigs:
+        - url: "http://kube-doctor.kube-doctor-system.svc.cluster.local:8080/v1/webhooks/alertmanager"
+          sendResolved: true
+

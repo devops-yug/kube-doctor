@@ -1,0 +1,19 @@
+name: percona-pg
+description: Percona Distribution for PostgreSQL Operator (PerconaPGCluster.pgv2.percona.com/v2)
+primaryGvk:
+  apiVersion: pgv2.percona.com/v2
+  kind: PerconaPGCluster
+  plural: perconapgclusters
+  role: rootController
+statusPhasePath: status.state
+autoRemediateMemory: true
+crdSchemaFields:
+  - path: spec.instances.resources.limits.memory
+    type: string (Quantity)
+    description: Memory limit for Percona PostgreSQL instance pods
+  - path: spec.instances.resources.requests.memory
+    type: string (Quantity)
+    description: Memory request for Percona PostgreSQL instance pods
+  - path: spec.instances.dataVolumeClaimSpec.resources.requests.storage
+    type: string (Quantity)
+    description: PVC storage size for Percona PostgreSQL data volume

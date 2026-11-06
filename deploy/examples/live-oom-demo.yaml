@@ -1,0 +1,42 @@
+# Real OOMKilled StatefulSet Demo for Kind / Kubernetes >= 1.35
+# The container allocates ~60MiB in /dev/shm (tmpfs backed by container cgroup memory).
+# With the initial 32Mi memory limit, the Linux kernel cgroup v2 OOM-killer terminates it with
+# ExitCode 137 (OOMKilled). Once kube-doctor autonomously patches the StatefulSet memory limit
+# (>= 288Mi), the allocation succeeds and the pod stays 1/1 Running!
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: oom-demo
+  namespace: default
+  labels:
+    app: oom-demo
+spec:
+  serviceName: oom-demo
+  replicas: 1
+  selector:
+    matchLabels:
+      app: oom-demo
+  template:
+    metadata:
+      labels:
+        app: oom-demo
+    spec:
+      containers:
+        - name: app
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Allocating 60MiB in /dev/shm..."
+              dd if=/dev/zero of=/dev/shm/memfill bs=1M count=60
+              echo "Allocation succeeded within cgroup memory limit! Sleeping..."
+              sleep 3600
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "16Mi"
+            limits:
+              cpu: "200m"
+              memory: "32Mi"
+
