@@ -157,5 +157,30 @@ func TestZeroConfigUnknownCRDIntrospectionAndFieldSelection(t *testing.T) {
 	if !strings.Contains(assessment.PlannedActions[0].PatchPayload, `"40Gi"`) {
 		t.Fatalf("expected storage expanded to 40Gi in CR patch payload: %s", assessment.PlannedActions[0].PatchPayload)
 	}
+
+	// Verify Post-Remediation Effectiveness Monitor records VERIFIED_HEALTHY (100/100 score)
+	w := watcher.NewWatcher(k8sClient, remEngine)
+	alerts := watcher.AlertmanagerPayload{
+		Status: "firing",
+		Alerts: []watcher.AlertmanagerAlert{
+			{
+				Status:      "firing",
+				Fingerprint: "fp-redis-1",
+				Labels: map[string]string{
+					"alertname": "KubePodOOMKilled",
+					"namespace": "default",
+					"pod":       "pg-cluster-1",
+				},
+			},
+		},
+	}
+	incs, err := w.HandleAlertmanagerWebhook(ctx, alerts)
+	if err != nil || len(incs) != 1 {
+		t.Fatalf("HandleAlertmanagerWebhook failed: %v", err)
+	}
+	verified := w.VerifyRemediationEffectiveness(ctx)
+	if len(verified) != 1 || verified[0].Effectiveness == nil || verified[0].Effectiveness.VerificationStatus != "VERIFIED_HEALTHY" || verified[0].Effectiveness.EffectivenessScore != 100 {
+		t.Fatalf("expected EffectivenessReport VERIFIED_HEALTHY (score=100), got %+v", verified[0].Effectiveness)
+	}
 }
 

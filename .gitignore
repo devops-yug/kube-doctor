@@ -1,0 +1,51 @@
+# Compiled Go binaries & build artifacts
+bin/
+/kube-doctor
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.txt
+
+# Container image archives
+*.tar
+*.tar.gz
+
+# Python cache & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# QLoRA / LLM training checkpoints & generated datasets
+training/checkpoints/
+training/output/
+training/data/*.jsonl
+wandb/
+*.gguf
+*.safetensors
+
+# Runtime & debug logs
+*.log
+scripts/mcp_bridge_debug.log
+output.txt
+
+# Local environment & secrets
+.env
+.env.*
+*.kubeconfig
+kubeconfig*
+
+# IDE / OS metadata (keep .vscode/mcp.json and .mcp.json tracked)
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+

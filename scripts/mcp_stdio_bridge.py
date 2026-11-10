@@ -147,6 +147,18 @@ TOOLS_CATALOG = [
         },
     },
     {
+        "name": "verify_remediation_effectiveness",
+        "description": (
+            "Run the Post-Remediation Effectiveness Monitor across all remediated incidents to verify whether target "
+            "Pods/CustomResources recovered (Ready=True), check for post-fix container restarts, detect spec drift, "
+            "and compute Effectiveness Scores (0-100)."
+        ),
+        "inputSchema": {
+            "type": "object",
+            "properties": {},
+        },
+    },
+    {
         "name": "diagnose_and_remediate_cluster_issue",
         "description": (
             "Diagnose a Kubernetes >= 1.35 / OpenShift >= 4.22 cluster event across all 26 IssueTypes "

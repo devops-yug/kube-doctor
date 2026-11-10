@@ -92,6 +92,7 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/v1/diagnostics/ingest", s.handleDiagnosticsIngest)
 	s.mux.HandleFunc("/v1/cluster/scan", s.handleClusterScan)
 	s.mux.HandleFunc("/v1/incidents", s.handleIncidentsList)
+	s.mux.HandleFunc("/v1/effectiveness", s.handleEffectivenessVerify)
 	s.mux.HandleFunc("/v1/webhooks/alertmanager", s.handleAlertmanagerWebhook)
 	s.mux.HandleFunc("/v1/approvals", s.handleApprovalsList)
 	s.mux.HandleFunc("/v1/approvals/", s.handleApprovalAction)
@@ -358,6 +359,18 @@ func (s *Server) handleIncidentsList(w http.ResponseWriter, r *http.Request) {
 		"watcherStatus":    s.clusterWatcher.Status(),
 		"incidents":        s.clusterWatcher.ListIncidents(),
 		"pendingApprovals": s.gitopsManager.ListApprovals(),
+	})
+}
+
+func (s *Server) handleEffectivenessVerify(w http.ResponseWriter, r *http.Request) {
+	if s.clusterWatcher == nil {
+		writeJSON(w, http.StatusOK, map[string]any{"incidents": []any{}})
+		return
+	}
+	records := s.clusterWatcher.VerifyRemediationEffectiveness(r.Context())
+	writeJSON(w, http.StatusOK, map[string]any{
+		"watcherStatus": s.clusterWatcher.Status(),
+		"incidents":     records,
 	})
 }
 

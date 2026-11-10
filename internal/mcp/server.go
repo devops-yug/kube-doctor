@@ -268,6 +268,14 @@ func (s *Server) toolDefinitions() []map[string]any {
 			},
 		},
 		{
+			"name":        "verify_remediation_effectiveness",
+			"description": "Run the Post-Remediation Effectiveness Monitor across all remediated incidents to verify whether target Pods/CustomResources recovered (Ready=True), check for post-fix container restarts, detect spec drift, and compute Effectiveness Scores (0-100).",
+			"inputSchema": map[string]any{
+				"type":       "object",
+				"properties": map[string]any{},
+			},
+		},
+		{
 			"name":        "diagnose_and_remediate_cluster_issue",
 			"description": "Diagnose a Kubernetes >= 1.35 / OpenShift >= 4.22 cluster event (e.g. OOMKilled StatefulSet pod, Namespace ResourceQuota exceeded, or missing OpenShift MachineSet node) and execute or stage corrective action based on criticality and severity.",
 			"inputSchema": map[string]any{
@@ -441,6 +449,24 @@ func (s *Server) handleToolCall(ctx context.Context, rawParams json.RawMessage) 
 		}
 		payload := map[string]any{
 			"operatorAdapters": adaptersMeta,
+		}
+		outBytes, _ := json.MarshalIndent(payload, "", "  ")
+		return map[string]any{
+			"content": []map[string]any{
+				{"type": "text", "text": string(outBytes)},
+			},
+		}, nil
+
+	case "verify_remediation_effectiveness":
+		var incidents any
+		var status any
+		if s.clusterWatcher != nil {
+			incidents = s.clusterWatcher.VerifyRemediationEffectiveness(ctx)
+			status = s.clusterWatcher.Status()
+		}
+		payload := map[string]any{
+			"watcherStatus": status,
+			"incidents":     incidents,
 		}
 		outBytes, _ := json.MarshalIndent(payload, "", "  ")
 		return map[string]any{

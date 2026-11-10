@@ -179,22 +179,37 @@ type DiagnosticEvent struct {
 	Timestamp         time.Time         `json:"timestamp"`
 }
 
+// EffectivenessReport tracks post-remediation health verification, spec drift checks,
+// and stability scoring (0-100) after an autonomous or approved remediation action runs.
+type EffectivenessReport struct {
+	VerificationStatus string    `json:"verificationStatus"` // "PENDING_VERIFICATION", "VERIFIED_HEALTHY", "SPEC_DRIFT_DETECTED", "REGRESSION_DETECTED", "AWAITING_APPROVAL"
+	EffectivenessScore int       `json:"effectivenessScore"` // 0 to 100
+	TargetResource     string    `json:"targetResource"`     // e.g., "Cluster/pg-cluster" or "StatefulSet/oom-demo"
+	PodReadyVerified   bool      `json:"podReadyVerified"`
+	SpecDriftDetected  bool      `json:"specDriftDetected"`
+	RestartsSinceFix   int       `json:"restartsSinceFix"`
+	Message            string    `json:"message"`
+	ChecksPerformed    int       `json:"checksPerformed"`
+	LastVerifiedAt     time.Time `json:"lastVerifiedAt"`
+}
+
 // TriageAssessment contains the LLM + rule-engine criticality/severity classification
 // and the planned corrective actions.
 type TriageAssessment struct {
-	EventID            string              `json:"eventId"`
-	ClusterID          string              `json:"clusterId,omitempty"`
-	OperatorAdapter    string              `json:"operatorAdapter,omitempty"`
-	OwnershipChain     []OwnerChainLink    `json:"ownershipChain,omitempty"`
-	IssueType          IssueType           `json:"issueType"`
-	Criticality        Criticality         `json:"criticality"`
-	Severity           Severity            `json:"severity"`
-	Summary            string              `json:"summary"`
-	RootCauseAnalysis  string              `json:"rootCauseAnalysis"`
-	K8s135FeaturesUsed []string            `json:"k8s135FeaturesUsed,omitempty"`
-	OCP422FeaturesUsed []string            `json:"ocp422FeaturesUsed,omitempty"`
-	PlannedActions     []RemediationAction `json:"plannedActions"`
-	ExternalInfoNeeded []ExternalInfoQuery `json:"externalInfoNeeded,omitempty"`
+	EventID            string               `json:"eventId"`
+	ClusterID          string               `json:"clusterId,omitempty"`
+	OperatorAdapter    string               `json:"operatorAdapter,omitempty"`
+	OwnershipChain     []OwnerChainLink     `json:"ownershipChain,omitempty"`
+	IssueType          IssueType            `json:"issueType"`
+	Criticality        Criticality          `json:"criticality"`
+	Severity           Severity             `json:"severity"`
+	Summary            string               `json:"summary"`
+	RootCauseAnalysis  string               `json:"rootCauseAnalysis"`
+	K8s135FeaturesUsed []string             `json:"k8s135FeaturesUsed,omitempty"`
+	OCP422FeaturesUsed []string             `json:"ocp422FeaturesUsed,omitempty"`
+	PlannedActions     []RemediationAction  `json:"plannedActions"`
+	Effectiveness      *EffectivenessReport `json:"effectiveness,omitempty"`
+	ExternalInfoNeeded []ExternalInfoQuery  `json:"externalInfoNeeded,omitempty"`
 }
 
 // ExternalInfoQuery represents a request from kube-doctor LLM back to the calling
