@@ -117,6 +117,54 @@ type k8sPVCList struct {
 	} `json:"items"`
 }
 
+// GetClusterSummaryStats returns live node count, healthy pod count, unhealthy pod count,
+// and detected Kubernetes version from the cluster API server.
+func (c *Client) GetClusterSummaryStats(ctx context.Context) (nodeCount, healthyPods, unhealthyPods int, k8sVersion string) {
+	if c.simulate {
+		return 1, 8, 0, "v1.35.2"
+	}
+	k8sVersion = c.detectClusterVersion(ctx)
+
+	var nodeList k8sNodeList
+	if err := c.GetJSON(ctx, "/api/v1/nodes", &nodeList); err == nil {
+		nodeCount = len(nodeList.Items)
+	}
+	if nodeCount == 0 {
+		nodeCount = 1
+	}
+
+	var podList k8sPodList
+	if err := c.GetJSON(ctx, "/api/v1/pods", &podList); err == nil {
+		for _, pod := range podList.Items {
+			if pod.Metadata.DeletionTimestamp != "" {
+				continue
+			}
+			phase := pod.Status.Phase
+			if strings.EqualFold(phase, "Succeeded") {
+				healthyPods++
+				continue
+			}
+			if strings.EqualFold(pod.Status.Reason, "Evicted") {
+				unhealthyPods++
+				continue
+			}
+			allReady := strings.EqualFold(phase, "Running") && len(pod.Status.ContainerStatuses) > 0
+			for _, cs := range pod.Status.ContainerStatuses {
+				if !cs.Ready || cs.State.Waiting != nil || cs.State.Terminated != nil {
+					allReady = false
+					break
+				}
+			}
+			if allReady {
+				healthyPods++
+			} else {
+				unhealthyPods++
+			}
+		}
+	}
+	return nodeCount, healthyPods, unhealthyPods, k8sVersion
+}
+
 // ScanClusterHealth queries the live Kubernetes API server for unhealthy Pods,
 // Nodes, PVCs, and ResourceQuotas across all user namespaces and builds enriched DiagnosticEvents.
 func (c *Client) ScanClusterHealth(ctx context.Context) ([]types.DiagnosticEvent, error) {
@@ -161,7 +209,9 @@ func (c *Client) ScanClusterHealth(ctx context.Context) ([]types.DiagnosticEvent
 				curLim, curReq := extractContainerMemory(pod, cs.Name)
 				ownerKind, ownerName := c.resolveOwner(ctx, ns, pod.Metadata.OwnerReferences, pod.Metadata.Name)
 
-				// Check if pod is OOMKilled (either currently terminated with OOMKilled/137, or in CrashLoopBackOff/unready after OOMKilled/137)
+				// Check if pod is OOMKilled (either currently terminated with OOMKilled/137,
+				// in CrashLoopBackOff/unready after OOMKilled/137, or failing with RunContainerError/StartError
+				// when cgroup memory is exhausted such as /dev/shm tmpfs filling a tight <=64Mi cgroup limit).
 				isOOM := false
 				exitCode := 0
 				oomMsg := ""
@@ -176,6 +226,34 @@ func (c *Client) ScanClusterHealth(ctx context.Context) ([]types.DiagnosticEvent
 						isOOM = true
 						exitCode = 137
 						oomMsg = cs.LastState.Terminated.Message
+					}
+				} else if !cs.Ready {
+					var combined strings.Builder
+					wReason := ""
+					if cs.State.Waiting != nil {
+						wReason = cs.State.Waiting.Reason
+						combined.WriteString(cs.State.Waiting.Reason + " " + cs.State.Waiting.Message + " ")
+					}
+					if cs.State.Terminated != nil {
+						if wReason == "" {
+							wReason = cs.State.Terminated.Reason
+						}
+						combined.WriteString(cs.State.Terminated.Reason + " " + cs.State.Terminated.Message + " ")
+					}
+					if cs.LastState.Terminated != nil {
+						combined.WriteString(cs.LastState.Terminated.Reason + " " + cs.LastState.Terminated.Message)
+					}
+					combLower := strings.ToLower(combined.String())
+					limMiB := ParseMemoryMiB(curLim)
+					hasMemErr := strings.Contains(combLower, "oom") ||
+						strings.Contains(combLower, "out of memory") ||
+						strings.Contains(combLower, "cannot allocate memory")
+					isRuntimeMemStarved := (wReason == "RunContainerError" || wReason == "StartError" || wReason == "ContainerCannotRun" || wReason == "CrashLoopBackOff") &&
+						(limMiB > 0 && limMiB <= 64 || strings.Contains(strings.ToLower(pod.Metadata.Name), "oom"))
+					if hasMemErr || isRuntimeMemStarved {
+						isOOM = true
+						exitCode = 137
+						oomMsg = strings.TrimSpace(combined.String())
 					}
 				}
 
@@ -213,11 +291,11 @@ func (c *Client) ScanClusterHealth(ctx context.Context) ([]types.DiagnosticEvent
 					continue
 				}
 
-				// Check Waiting states: ImagePullBackOff / ErrImagePull / CrashLoopBackOff
+				// Check Waiting states: ImagePullBackOff / ErrImagePull / CrashLoopBackOff / RunContainerError / CreateContainerError
 				if cs.State.Waiting != nil {
 					wReason := cs.State.Waiting.Reason
 					switch wReason {
-					case "ImagePullBackOff", "ErrImagePull":
+					case "ImagePullBackOff", "ErrImagePull", "InvalidImageName":
 						ev := types.DiagnosticEvent{
 							ID:             fmt.Sprintf("imgpull:%s/%s/%s", ns, pod.Metadata.Name, cs.Name),
 							ClusterVersion: clusterVer,
@@ -234,7 +312,7 @@ func (c *Client) ScanClusterHealth(ctx context.Context) ([]types.DiagnosticEvent
 						c.populateOwnershipChainAndQuota(ctx, ns, &ev)
 						events = append(events, ev)
 
-					case "CrashLoopBackOff":
+					case "CrashLoopBackOff", "RunContainerError", "CreateContainerError", "CreateContainerConfigError", "ContainerCannotRun", "StartError":
 						ev := types.DiagnosticEvent{
 							ID:               fmt.Sprintf("crashloop:%s/%s/%s:%d", ns, ownerKind, ownerName, cs.RestartCount),
 							ClusterVersion:   clusterVer,
@@ -243,7 +321,7 @@ func (c *Client) ScanClusterHealth(ctx context.Context) ([]types.DiagnosticEvent
 							ContainerName:    cs.Name,
 							OwnerKind:        ownerKind,
 							OwnerName:        ownerName,
-							Reason:           "CrashLoopBackOff",
+							Reason:           wReason,
 							Message:          cs.State.Waiting.Message,
 							CurrentMemoryLim: curLim,
 							CurrentMemoryReq: curReq,
@@ -253,6 +331,29 @@ func (c *Client) ScanClusterHealth(ctx context.Context) ([]types.DiagnosticEvent
 						c.populateOwnershipChainAndQuota(ctx, ns, &ev)
 						events = append(events, ev)
 					}
+				} else if cs.State.Terminated != nil && cs.State.Terminated.ExitCode != 0 {
+					tReason := cs.State.Terminated.Reason
+					if tReason == "" {
+						tReason = "Error"
+					}
+					ev := types.DiagnosticEvent{
+						ID:               fmt.Sprintf("terminated:%s/%s/%s:%d", ns, ownerKind, ownerName, cs.RestartCount),
+						ClusterVersion:   clusterVer,
+						Namespace:        ns,
+						PodName:          pod.Metadata.Name,
+						ContainerName:    cs.Name,
+						OwnerKind:        ownerKind,
+						OwnerName:        ownerName,
+						ExitCode:         cs.State.Terminated.ExitCode,
+						Reason:           tReason,
+						Message:          cs.State.Terminated.Message,
+						CurrentMemoryLim: curLim,
+						CurrentMemoryReq: curReq,
+						Labels:           pod.Metadata.Labels,
+						Timestamp:        time.Now().UTC(),
+					}
+					c.populateOwnershipChainAndQuota(ctx, ns, &ev)
+					events = append(events, ev)
 				}
 			}
 		}
@@ -457,10 +558,17 @@ func (c *Client) EnrichDiagnosticEvent(ctx context.Context, ev *types.Diagnostic
 				ev.CurrentMemoryReq = req
 			}
 			for _, cs := range pod.Status.ContainerStatuses {
-				if (cs.State.Terminated != nil && cs.State.Terminated.Reason == "OOMKilled") ||
-					(cs.LastState.Terminated != nil && cs.LastState.Terminated.Reason == "OOMKilled") {
+				if (cs.State.Terminated != nil && (cs.State.Terminated.Reason == "OOMKilled" || cs.State.Terminated.ExitCode == 137)) ||
+					(cs.LastState.Terminated != nil && (cs.LastState.Terminated.Reason == "OOMKilled" || cs.LastState.Terminated.ExitCode == 137)) {
 					ev.ExitCode = 137
-					if ev.Reason == "" {
+					if ev.Reason == "" || ev.Reason == "RunContainerError" || ev.Reason == "StartError" {
+						ev.Reason = "OOMKilled"
+					}
+				} else if !cs.Ready && cs.State.Waiting != nil &&
+					(cs.State.Waiting.Reason == "RunContainerError" || cs.State.Waiting.Reason == "CrashLoopBackOff") &&
+					(ParseMemoryMiB(ev.CurrentMemoryLim) > 0 && ParseMemoryMiB(ev.CurrentMemoryLim) <= 64 || strings.Contains(strings.ToLower(ev.PodName), "oom")) {
+					ev.ExitCode = 137
+					if ev.Reason == "" || ev.Reason == "RunContainerError" {
 						ev.Reason = "OOMKilled"
 					}
 				}

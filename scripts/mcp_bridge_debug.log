@@ -193,3 +193,71 @@
 [2026-10-30T00:09:04.639328+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
 [2026-10-30T00:09:04.640644+00:00] SEND tools/list (20 tools)
 [2026-10-31T00:27:40.189463+00:00] === Bridge stdin closed (PID=72639) ===
+[2026-11-13T03:58:24.043828+00:00] === Bridge started (PID=53324, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-11-13T03:58:24.044448+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"roots":{"listChanged":true},"sampling":{},"elicitation":{"form":{},"url":{}},"tasks":{"list":{},"cancel":{},"requests":{"sampling":{"createMessage":{}},"elicitation":{"create":{}}}},"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}}},"clientInfo":{"name":"Visual Studio Code","version":"1.146.0"}}}
+[2026-11-13T03:58:24.044756+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-11-13T03:58:24.066136+00:00] RECV: {"method":"notifications/initialized","jsonrpc":"2.0"}
+[2026-11-13T03:58:24.066283+00:00] ACK notification: notifications/initialized
+[2026-11-13T03:58:24.066345+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+[2026-11-13T03:58:24.066509+00:00] SEND tools/list (21 tools)
+[2026-11-13T03:58:48.953827+00:00] === Bridge started (PID=53505, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-11-13T03:58:48.953954+00:00] RECV: {"jsonrpc":"2.0","id":0,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"copilot-cli","version":"1.0.108-0"},"io.modelcontextprotocol/clientCapabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}}}}}
+[2026-11-13T03:58:48.954111+00:00] SEND server/discover (21 tools)
+[2026-11-13T03:58:48.954938+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}},"clientInfo":{"name":"copilot-cli","version":"1.0.108-0"}}}
+[2026-11-13T03:58:48.955059+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-11-13T03:58:48.955307+00:00] RECV: {"jsonrpc":"2.0","method":"notifications/initialized"}
+[2026-11-13T03:58:48.955388+00:00] ACK notification: notifications/initialized
+[2026-11-13T03:58:48.955679+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{"progressToken":0}}}
+[2026-11-13T03:58:48.955842+00:00] SEND tools/list (21 tools)
+[2026-11-13T15:26:40.336482+00:00] === Bridge started (PID=13143, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-11-13T15:26:40.337479+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"roots":{"listChanged":true},"sampling":{},"elicitation":{"form":{},"url":{}},"tasks":{"list":{},"cancel":{},"requests":{"sampling":{"createMessage":{}},"elicitation":{"create":{}}}},"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}}},"clientInfo":{"name":"Visual Studio Code","version":"1.146.0"}}}
+[2026-11-13T15:26:40.337697+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-11-13T15:26:40.436799+00:00] RECV: {"method":"notifications/initialized","jsonrpc":"2.0"}
+[2026-11-13T15:26:40.436925+00:00] ACK notification: notifications/initialized
+[2026-11-13T15:26:40.436959+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+[2026-11-13T15:26:40.437105+00:00] SEND tools/list (21 tools)
+[2026-11-13T15:27:26.697955+00:00] === Bridge started (PID=13406, argv=['/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py']) ===
+[2026-11-13T15:27:26.698076+00:00] RECV: {"jsonrpc":"2.0","id":0,"method":"server/discover","params":{"_meta":{"io.modelcontextprotocol/protocolVersion":"2026-07-28","io.modelcontextprotocol/clientInfo":{"name":"copilot-cli","version":"1.0.108-0"},"io.modelcontextprotocol/clientCapabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}}}}}
+[2026-11-13T15:27:26.698228+00:00] SEND server/discover (21 tools)
+[2026-11-13T15:27:26.699380+00:00] RECV: {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{"extensions":{"io.modelcontextprotocol/ui":{"mimeTypes":["text/html;profile=mcp-app"]}},"sampling":{},"elicitation":{"form":{},"url":{}}},"clientInfo":{"name":"copilot-cli","version":"1.0.108-0"}}}
+[2026-11-13T15:27:26.699499+00:00] SEND: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25","serverInfo":{"name":"kube-doctor-mcp","version":"1.35.0-ocp4.22"},"capabilities":{"tools":{"listChanged":false}}}}
+[2026-11-13T15:27:26.699699+00:00] RECV: {"jsonrpc":"2.0","method":"notifications/initialized"}
+[2026-11-13T15:27:26.699769+00:00] ACK notification: notifications/initialized
+[2026-11-13T15:27:26.700687+00:00] RECV: {"jsonrpc":"2.0","id":2,"method":"tools/list","params":{"_meta":{"progressToken":0}}}
+[2026-11-13T15:27:26.700872+00:00] SEND tools/list (21 tools)
+[2026-11-13T15:27:28.878985+00:00] RECV: {"jsonrpc":"2.0","id":3,"method":"tools/list","params":{"_meta":{"progressToken":1}}}
+[2026-11-13T15:27:28.879193+00:00] SEND tools/list (21 tools)
+[2026-11-13T15:27:43.119131+00:00] RECV: {"jsonrpc":"2.0","id":4,"method":"tools/list","params":{"_meta":{"progressToken":2}}}
+[2026-11-13T15:27:43.119372+00:00] SEND tools/list (21 tools)
+[2026-11-13T15:27:47.620863+00:00] RECV: {"jsonrpc":"2.0","id":5,"method":"tools/call","params":{"_meta":{"com.github.copilot/toolCallId":"toolu_019ChMgodBt9PqDtp1Atpw7z","progressToken":3},"arguments":{},"name":"list_managed_clusters"}}
+[2026-11-13T15:27:47.633564+00:00] SEND tool result: {"jsonrpc":"2.0","id":5,"result":{"content":[{"text":"{\n  \"managedClusters\": [\n    {\n      \"clusterId\": \"hub-control-plane\",\n      \"displayName\": \"Primary Local Cluster (hub-control-plane
+[2026-11-13T15:27:47.634337+00:00] RECV: {"jsonrpc":"2.0","id":6,"method":"tools/list","params":{"_meta":{"progressToken":4}}}
+[2026-11-13T15:27:47.634561+00:00] SEND tools/list (21 tools)
+[2026-11-13T15:59:37.477729+00:00] RECV: {"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"_meta":{"com.github.copilot/toolCallId":"toolu_01AYk5cHsaeEFad5YsGQXk1Y","progressToken":5},"arguments":{},"name":"list_managed_clusters"}}
+[2026-11-13T15:59:37.492821+00:00] SEND tool result: {"jsonrpc":"2.0","id":7,"result":{"content":[{"text":"{\n  \"managedClusters\": [\n    {\n      \"clusterId\": \"raspberrypi-arm64\",\n      \"displayName\": \"Raspberry Pi Edge Spoke Cluster\",\n    
+[2026-11-13T15:59:37.493559+00:00] RECV: {"jsonrpc":"2.0","id":8,"method":"tools/list","params":{"_meta":{"progressToken":6}}}
+[2026-11-13T15:59:37.493947+00:00] SEND tools/list (21 tools)
+[2026-11-13T16:01:49.238484+00:00] RECV: {"jsonrpc":"2.0","id":9,"method":"tools/call","params":{"_meta":{"com.github.copilot/toolCallId":"toolu_01EDtaAZNnsCTHWM9apfMTLw","progressToken":7},"arguments":{},"name":"list_managed_clusters"}}
+[2026-11-13T16:01:49.260771+00:00] SEND tool result: {"jsonrpc":"2.0","id":9,"result":{"content":[{"text":"{\n  \"managedClusters\": [\n    {\n      \"clusterId\": \"hub-control-plane\",\n      \"displayName\": \"Primary Local Cluster (hub-control-plane
+[2026-11-13T16:01:49.261384+00:00] RECV: {"jsonrpc":"2.0","id":10,"method":"tools/list","params":{"_meta":{"progressToken":8}}}
+[2026-11-13T16:01:49.261798+00:00] SEND tools/list (21 tools)
+[2026-11-13T16:01:51.608371+00:00] RECV: {"jsonrpc":"2.0","id":11,"method":"tools/call","params":{"_meta":{"com.github.copilot/toolCallId":"toolu_01GuJ7JcP1jPGAqxf2NqLzia","progressToken":9},"arguments":{"clusterId":"raspberrypi-arm64"},"name":"list_active_incidents"}}
+[2026-11-13T16:01:51.636418+00:00] SEND tool result: {"jsonrpc":"2.0","id":11,"result":{"content":[{"text":"{\n  \"incidents\": [\n    {\n      \"incidentId\": \"inc-1794585690782858620\",\n      \"source\": \"SPOKE_AGENT:raspberrypi-arm64\",\n      \"d
+[2026-11-13T16:01:51.637533+00:00] RECV: {"jsonrpc":"2.0","id":12,"method":"tools/list","params":{"_meta":{"progressToken":10}}}
+[2026-11-13T16:01:51.637785+00:00] SEND tools/list (21 tools)
+[2026-11-13T16:03:58.331199+00:00] RECV: {"jsonrpc":"2.0","id":13,"method":"tools/call","params":{"_meta":{"com.github.copilot/toolCallId":"toolu_01WRmyN5GwfADv4TzZhJM2hr","progressToken":11},"arguments":{},"name":"list_managed_clusters"}}
+[2026-11-13T16:03:58.350889+00:00] SEND tool result: {"jsonrpc":"2.0","id":13,"result":{"content":[{"text":"{\n  \"managedClusters\": [\n    {\n      \"clusterId\": \"hub-control-plane\",\n      \"displayName\": \"Primary Local Cluster (hub-control-plan
+[2026-11-13T16:03:58.351064+00:00] RECV: {"jsonrpc":"2.0","id":14,"method":"tools/call","params":{"_meta":{"com.github.copilot/toolCallId":"toolu_01TbJfa43qpB6CQwEsQ92EJe","progressToken":12},"arguments":{"clusterId":"raspberrypi-arm64"},"name":"list_active_incidents"}}
+[2026-11-13T16:03:58.374814+00:00] SEND tool result: {"jsonrpc":"2.0","id":14,"result":{"content":[{"text":"{\n  \"incidents\": [\n    {\n      \"incidentId\": \"inc-1794585690782858620\",\n      \"source\": \"SPOKE_AGENT:raspberrypi-arm64\",\n      \"d
+[2026-11-13T16:03:58.374952+00:00] RECV: {"jsonrpc":"2.0","id":15,"method":"tools/list","params":{"_meta":{"progressToken":13}}}
+[2026-11-13T16:03:58.375112+00:00] SEND tools/list (21 tools)
+[2026-11-13T16:03:58.375504+00:00] RECV: {"jsonrpc":"2.0","id":16,"method":"tools/list","params":{"_meta":{"progressToken":14}}}
+[2026-11-13T16:03:58.375755+00:00] SEND tools/list (21 tools)
+[2026-11-13T16:10:34.440688+00:00] RECV: {"jsonrpc":"2.0","id":17,"method":"tools/call","params":{"_meta":{"com.github.copilot/toolCallId":"toolu_01XwRt7cxy3nzg3GE3JoNh2f","progressToken":15},"arguments":{},"name":"list_managed_clusters"}}
+[2026-11-13T16:10:34.484858+00:00] SEND tool result: {"jsonrpc":"2.0","id":17,"result":{"content":[{"text":"{\n  \"managedClusters\": [\n    {\n      \"clusterId\": \"hub-control-plane\",\n      \"displayName\": \"Primary Local Cluster (hub-control-plan
+[2026-11-13T16:10:34.485124+00:00] RECV: {"jsonrpc":"2.0","id":18,"method":"tools/call","params":{"_meta":{"com.github.copilot/toolCallId":"toolu_01KNRLYr6eEfoSSLskFyxUGe","progressToken":16},"arguments":{"clusterId":"raspberrypi-arm64"},"name":"list_active_incidents"}}
+[2026-11-13T16:10:34.547638+00:00] SEND tool result: {"jsonrpc":"2.0","id":18,"result":{"content":[{"text":"{\n  \"incidents\": [\n    {\n      \"incidentId\": \"inc-1794585690782858620\",\n      \"source\": \"SPOKE_AGENT:raspberrypi-arm64\",\n      \"d
+[2026-11-13T16:10:34.548238+00:00] RECV: {"jsonrpc":"2.0","id":19,"method":"tools/list","params":{"_meta":{"progressToken":17}}}
+[2026-11-13T16:10:34.548610+00:00] SEND tools/list (21 tools)
+[2026-11-13T16:10:34.549396+00:00] RECV: {"jsonrpc":"2.0","id":20,"method":"tools/list","params":{"_meta":{"progressToken":18}}}
+[2026-11-13T16:10:34.549748+00:00] SEND tools/list (21 tools)

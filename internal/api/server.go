@@ -355,10 +355,34 @@ func (s *Server) handleIncidentsList(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]any{"incidents": []any{}})
 		return
 	}
+	clusterID := r.URL.Query().Get("clusterId")
+	includeResolved := r.URL.Query().Get("includeResolved") == "true"
+	_ = s.clusterWatcher.VerifyRemediationEffectiveness(r.Context())
+
+	var activeIncs, resolvedIncs, incidentsOut []watcher.IncidentRecord
+	if s.hubManager != nil {
+		activeIncs = s.hubManager.ListActiveFleetIncidents(clusterID)
+		resolvedIncs = s.hubManager.ListResolvedFleetIncidents(clusterID)
+		if includeResolved {
+			incidentsOut = s.hubManager.ListFleetIncidents(clusterID)
+		} else {
+			incidentsOut = activeIncs
+		}
+	} else {
+		activeIncs = s.clusterWatcher.ListActiveIncidents()
+		resolvedIncs = s.clusterWatcher.ListResolvedIncidents()
+		if includeResolved {
+			incidentsOut = s.clusterWatcher.ListIncidents()
+		} else {
+			incidentsOut = activeIncs
+		}
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
-		"watcherStatus":    s.clusterWatcher.Status(),
-		"incidents":        s.clusterWatcher.ListIncidents(),
-		"pendingApprovals": s.gitopsManager.ListApprovals(),
+		"watcherStatus":     s.clusterWatcher.Status(),
+		"activeIncidents":   activeIncs,
+		"resolvedIncidents": resolvedIncs,
+		"incidents":         incidentsOut,
+		"pendingApprovals":  s.gitopsManager.ListApprovals(),
 	})
 }
 
@@ -495,9 +519,11 @@ func (s *Server) handleHubClusterSubroutes(w http.ResponseWriter, r *http.Reques
 	clusterID := parts[0]
 	if len(parts) == 1 {
 		writeJSON(w, http.StatusOK, map[string]any{
-			"clusterId":       clusterID,
-			"incidents":       s.hubManager.ListFleetIncidents(clusterID),
-			"pendingCommands": s.hubManager.PendingCommands(clusterID),
+			"clusterId":         clusterID,
+			"activeIncidents":   s.hubManager.ListActiveFleetIncidents(clusterID),
+			"resolvedIncidents": s.hubManager.ListResolvedFleetIncidents(clusterID),
+			"incidents":         s.hubManager.ListActiveFleetIncidents(clusterID),
+			"pendingCommands":   s.hubManager.PendingCommands(clusterID),
 		})
 		return
 	}

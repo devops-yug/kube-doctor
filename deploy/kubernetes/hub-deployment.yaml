@@ -1,0 +1,191 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kube-doctor-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-doctor
+  namespace: kube-doctor-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kube-doctor-remediator
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "events", "nodes", "nodes/proxy", "namespaces", "resourcequotas", "limitranges", "persistentvolumeclaims", "services"]
+    verbs: ["get", "list", "watch", "patch", "update", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/resize"]
+    verbs: ["patch", "update"]
+  - apiGroups: ["apps"]
+    resources: ["statefulsets", "statefulsets/scale", "deployments", "deployments/scale", "replicasets", "daemonsets"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["policy"]
+    resources: ["poddisruptionbudgets"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["storage.k8s.io"]
+    resources: ["volumeattachments", "storageclasses"]
+    verbs: ["get", "list", "watch", "patch", "update", "delete"]
+  - apiGroups: ["networking.k8s.io"]
+    resources: ["networkpolicies", "ingresses"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["resource.k8s.io"]
+    resources: ["resourceclaims", "resourceclaimtemplates", "deviceclasses", "resourceslices"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["certificates.k8s.io"]
+    resources: ["certificatesigningrequests", "certificatesigningrequests/approval"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["rbac.authorization.k8s.io"]
+    resources: ["roles", "rolebindings"]
+    verbs: ["get", "list", "watch", "create", "patch", "update"]
+  - apiGroups: ["kubedoctor.io"]
+    resources: ["remediationrequests", "remediationrequests/status"]
+    verbs: ["get", "list", "watch", "create", "patch", "update"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["postgresql.cnpg.io"]
+    resources: ["clusters", "clusters/status", "poolers", "backups", "scheduledbackups"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["noobaa.io"]
+    resources: ["noobaas", "noobaas/status", "backingstores", "bucketclasses", "namespacestores"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["ocs.openshift.io"]
+    resources: ["storageclusters", "storageclusters/status"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["kafka.strimzi.io"]
+    resources: ["kafkas", "kafkanodepools", "kafkaconnects"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["pgv2.percona.com"]
+    resources: ["perconapgclusters"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kube-doctor-remediator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kube-doctor-remediator
+subjects:
+  - kind: ServiceAccount
+    name: kube-doctor
+    namespace: kube-doctor-system
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubernetes-mcp-server-config
+  namespace: kube-doctor-system
+data:
+  config.toml: |
+    log_level = 2
+    port = "8081"
+    bind_address = "127.0.0.1"
+    disable_localhost_protection = true
+    stateless = true
+    list_output = "yaml"
+    toolsets = ["core", "config", "helm"]
+
+    [[denied_resources]]
+    group = ""
+    version = "v1"
+    kind = "Secret"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-doctor
+  namespace: kube-doctor-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-doctor
+  template:
+    metadata:
+      labels:
+        app: kube-doctor
+        role: hub
+    spec:
+      serviceAccountName: kube-doctor
+      containers:
+        - name: kube-doctor
+          image: localhost/kube-doctor:v1.35-ocp4.22
+          imagePullPolicy: IfNotPresent
+          args:
+            - "--mode=hub"
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: PORT
+              value: "8080"
+            - name: KUBE_DOCTOR_MODE
+              value: "hub"
+            - name: KUBE_DOCTOR_CLUSTER_ID
+              value: "hub-control-plane"
+            - name: KUBE_DOCTOR_ENV
+              value: "control-plane"
+            - name: KUBE_DOCTOR_REGION
+              value: "local-hub"
+            - name: WATCH_INTERVAL_SECONDS
+              value: "15"
+            - name: K8S_MCP_SERVER_URL
+              value: "http://127.0.0.1:8081/mcp"
+            - name: GITOPS_REPO_URL
+              value: "https://github.com/org/k8s-gitops-fleet"
+            - name: UPSTREAM_LLM_BASE_URL
+              value: "http://host.containers.internal:11434"
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+        - name: kubernetes-mcp-server
+          image: quay.io/containers/kubernetes_mcp_server:latest
+          args:
+            - "--config"
+            - "/etc/kubernetes-mcp-server/config.toml"
+          ports:
+            - containerPort: 8081
+              name: mcp-http
+          volumeMounts:
+            - name: mcp-config
+              mountPath: /etc/kubernetes-mcp-server
+              readOnly: true
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+      volumes:
+        - name: mcp-config
+          configMap:
+            name: kubernetes-mcp-server-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-doctor
+  namespace: kube-doctor-system
+spec:
+  type: NodePort
+  selector:
+    app: kube-doctor
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+      nodePort: 30080

@@ -53,9 +53,9 @@ def ensure_port_forward(force_restart: bool = False) -> bool:
                 check=False,
             )
             time.sleep(0.3)
-        log_debug("Auto-starting kubectl -n kube-doctor-system port-forward svc/kube-doctor 8080:8080")
+        log_debug("Auto-starting kubectl -n kube-doctor-system port-forward --address 0.0.0.0 svc/kube-doctor 8080:8080")
         subprocess.Popen(
-            ["kubectl", "-n", "kube-doctor-system", "port-forward", "svc/kube-doctor", "8080:8080"],
+            ["kubectl", "-n", "kube-doctor-system", "port-forward", "--address", "0.0.0.0", "svc/kube-doctor", "8080:8080"],
             stdin=subprocess.DEVNULL,
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,

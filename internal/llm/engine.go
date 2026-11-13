@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 	"strings"
@@ -75,7 +76,14 @@ func NewEngine(ragEngine *rag.Engine, remEngine *remediation.Engine, k8sClient .
 		upstreamBaseURL:   upstreamURL,
 		upstreamAPIKey:    os.Getenv("UPSTREAM_LLM_API_KEY"),
 		httpClient: &http.Client{
-			Timeout: 60 * time.Second,
+			Timeout: 30 * time.Second,
+			Transport: &http.Transport{
+				DialContext: (&net.Dialer{
+					Timeout:   2 * time.Second,
+					KeepAlive: 15 * time.Second,
+				}).DialContext,
+				ResponseHeaderTimeout: 20 * time.Second,
+			},
 		},
 	}
 }

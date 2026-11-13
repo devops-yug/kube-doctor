@@ -5,11 +5,13 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -58,8 +60,6 @@ func NewClient() *Client {
 		}
 	}
 
-	simulate := apiServer == "" || os.Getenv("KUBE_SIMULATION_MODE") == "true"
-
 	tlsCfg := &tls.Config{
 		InsecureSkipVerify: os.Getenv("KUBE_INSECURE_TLS") == "true",
 	}
@@ -73,6 +73,29 @@ func NewClient() *Client {
 	} else {
 		tlsCfg.InsecureSkipVerify = true
 	}
+
+	// If not running in-cluster (and not in unit tests or forced simulation mode),
+	// fall back to ~/.kube/config so `make run-hub` on the host talks to the local kind/K8s cluster.
+	if apiServer == "" && os.Getenv("KUBE_SIMULATION_MODE") != "true" && !isTestBinary() {
+		if kcServer, kcToken, kcCert, kcCA, ok := loadFromKubeconfig(); ok {
+			apiServer = kcServer
+			if kcToken != "" {
+				token = kcToken
+			}
+			if kcCert != nil {
+				tlsCfg.Certificates = []tls.Certificate{*kcCert}
+			}
+			if len(kcCA) > 0 {
+				pool := x509.NewCertPool()
+				if pool.AppendCertsFromPEM(kcCA) {
+					tlsCfg.RootCAs = pool
+					tlsCfg.InsecureSkipVerify = false
+				}
+			}
+		}
+	}
+
+	simulate := apiServer == "" || os.Getenv("KUBE_SIMULATION_MODE") == "true"
 
 	return &Client{
 		apiServer: strings.TrimRight(apiServer, "/"),
@@ -515,4 +538,66 @@ func FormatMemoryMiB(mib int64) string {
 	}
 	return fmt.Sprintf("%dMi", mib)
 }
+
+func isTestBinary() bool {
+	if len(os.Args) == 0 {
+		return false
+	}
+	arg0 := os.Args[0]
+	return strings.HasSuffix(arg0, ".test") || strings.Contains(arg0, "/_test/")
+}
+
+func loadFromKubeconfig() (server, token string, clientCert *tls.Certificate, caPEM []byte, ok bool) {
+	kcPath := strings.TrimSpace(os.Getenv("KUBECONFIG"))
+	if kcPath != "" {
+		if idx := strings.IndexByte(kcPath, ':'); idx > 0 {
+			kcPath = kcPath[:idx]
+		}
+	} else if home, err := os.UserHomeDir(); err == nil && home != "" {
+		kcPath = filepath.Join(home, ".kube", "config")
+	}
+	if kcPath == "" {
+		return "", "", nil, nil, false
+	}
+	data, err := os.ReadFile(kcPath)
+	if err != nil {
+		return "", "", nil, nil, false
+	}
+
+	var certB64, keyB64, caB64 string
+	for _, rawLine := range strings.Split(string(data), "\n") {
+		line := strings.TrimSpace(rawLine)
+		switch {
+		case strings.HasPrefix(line, "server:") && server == "":
+			server = strings.Trim(strings.TrimSpace(strings.TrimPrefix(line, "server:")), `"'`)
+		case strings.HasPrefix(line, "certificate-authority-data:") && caB64 == "":
+			caB64 = strings.Trim(strings.TrimSpace(strings.TrimPrefix(line, "certificate-authority-data:")), `"'`)
+		case strings.HasPrefix(line, "client-certificate-data:") && certB64 == "":
+			certB64 = strings.Trim(strings.TrimSpace(strings.TrimPrefix(line, "client-certificate-data:")), `"'`)
+		case strings.HasPrefix(line, "client-key-data:") && keyB64 == "":
+			keyB64 = strings.Trim(strings.TrimSpace(strings.TrimPrefix(line, "client-key-data:")), `"'`)
+		case strings.HasPrefix(line, "token:") && token == "":
+			token = strings.Trim(strings.TrimSpace(strings.TrimPrefix(line, "token:")), `"'`)
+		}
+	}
+	if server == "" {
+		return "", "", nil, nil, false
+	}
+	if caB64 != "" {
+		if decoded, err := base64.StdEncoding.DecodeString(caB64); err == nil {
+			caPEM = decoded
+		}
+	}
+	if certB64 != "" && keyB64 != "" {
+		certPEM, err1 := base64.StdEncoding.DecodeString(certB64)
+		keyPEM, err2 := base64.StdEncoding.DecodeString(keyB64)
+		if err1 == nil && err2 == nil {
+			if pair, err := tls.X509KeyPair(certPEM, keyPEM); err == nil {
+				clientCert = &pair
+			}
+		}
+	}
+	return server, token, clientCert, caPEM, true
+}
+
 

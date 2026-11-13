@@ -366,26 +366,41 @@ func (s *Server) handleToolCall(ctx context.Context, rawParams json.RawMessage) 
 
 	case "list_active_incidents":
 		var args struct {
-			ClusterID string `json:"clusterId"`
+			ClusterID       string `json:"clusterId"`
+			IncludeResolved bool   `json:"includeResolved"`
 		}
 		_ = json.Unmarshal(call.Arguments, &args)
-		var incidents any
+		var activeIncs []watcher.IncidentRecord
+		var resolvedIncs []watcher.IncidentRecord
 		var status any
 		var clusters any
-		if s.hubManager != nil && args.ClusterID != "" {
-			incidents = s.hubManager.ListFleetIncidents(args.ClusterID)
-		} else if s.clusterWatcher != nil {
-			incidents = s.clusterWatcher.ListIncidents()
+		if s.clusterWatcher != nil {
+			_ = s.clusterWatcher.VerifyRemediationEffectiveness(ctx)
 			status = s.clusterWatcher.Status()
 		}
 		if s.hubManager != nil {
+			activeIncs = s.hubManager.ListActiveFleetIncidents(args.ClusterID)
+			resolvedIncs = s.hubManager.ListResolvedFleetIncidents(args.ClusterID)
 			clusters = s.hubManager.ListClusters()
+		} else if s.clusterWatcher != nil {
+			activeIncs = s.clusterWatcher.ListActiveIncidents()
+			resolvedIncs = s.clusterWatcher.ListResolvedIncidents()
+		}
+		incidentsOut := activeIncs
+		if args.IncludeResolved {
+			if s.hubManager != nil {
+				incidentsOut = s.hubManager.ListFleetIncidents(args.ClusterID)
+			} else if s.clusterWatcher != nil {
+				incidentsOut = s.clusterWatcher.ListIncidents()
+			}
 		}
 		payload := map[string]any{
-			"watcherStatus":    status,
-			"managedClusters":  clusters,
-			"incidents":        incidents,
-			"pendingApprovals": s.gitopsManager.ListApprovals(),
+			"watcherStatus":     status,
+			"managedClusters":   clusters,
+			"activeIncidents":   activeIncs,
+			"resolvedIncidents": resolvedIncs,
+			"incidents":         incidentsOut,
+			"pendingApprovals":  s.gitopsManager.ListApprovals(),
 		}
 		outBytes, _ := json.MarshalIndent(payload, "", "  ")
 		return map[string]any{
@@ -543,9 +558,10 @@ func (s *Server) handleToolCall(ctx context.Context, rawParams json.RawMessage) 
 		if call.Name == ToolEventsList && s.clusterWatcher != nil {
 			_, _ = s.clusterWatcher.ScanAndRemediate(ctx, "MCP_EVENTS_SCAN", false)
 			summary := map[string]any{
-				"kubeDoctorWatcherStatus": s.clusterWatcher.Status(),
-				"kubeDoctorIncidents":     s.clusterWatcher.ListIncidents(),
-				"pendingApprovals":        s.gitopsManager.ListApprovals(),
+				"kubeDoctorWatcherStatus":     s.clusterWatcher.Status(),
+				"kubeDoctorActiveIncidents":   s.clusterWatcher.ListActiveIncidents(),
+				"kubeDoctorResolvedIncidents": s.clusterWatcher.ListResolvedIncidents(),
+				"pendingApprovals":            s.gitopsManager.ListApprovals(),
 			}
 			if sumBytes, mErr := json.MarshalIndent(summary, "", "  "); mErr == nil {
 				resText = "# kube-doctor Active Incidents & Autonomous Remediation Summary:\n" + string(sumBytes) + "\n\n" + resText

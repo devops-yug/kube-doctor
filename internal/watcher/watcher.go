@@ -26,12 +26,23 @@ type LLMDiagnostician interface {
 // and post-remediation Effectiveness Monitor verification results.
 type IncidentRecord struct {
 	IncidentID    string                     `json:"incidentId"`
-	Source        string                     `json:"source"` // "CLUSTER_WATCHER", "PROMETHEUS_ALERTMANAGER", "ON_DEMAND_SCAN"
+	ClusterID     string                     `json:"clusterId,omitempty"`
+	Status        string                     `json:"status"` // "ACTIVE" or "RESOLVED"
+	Source        string                     `json:"source"` // "CLUSTER_WATCHER", "SPOKE_AGENT:<id>", "PROMETHEUS_ALERTMANAGER", "ON_DEMAND_SCAN"
 	DetectedAt    time.Time                  `json:"detectedAt"`
+	ResolvedAt    *time.Time                 `json:"resolvedAt,omitempty"`
 	Event         types.DiagnosticEvent      `json:"event"`
 	Assessment    *types.TriageAssessment    `json:"assessment"`
 	LLMAnalysis   string                     `json:"llmAnalysis,omitempty"`
 	Effectiveness *types.EffectivenessReport `json:"effectiveness,omitempty"`
+}
+
+// IsResolved returns true when the incident's remediation has been verified healthy on the cluster.
+func (r IncidentRecord) IsResolved() bool {
+	if strings.EqualFold(r.Status, "RESOLVED") {
+		return true
+	}
+	return r.Effectiveness != nil && r.Effectiveness.VerificationStatus == "VERIFIED_HEALTHY"
 }
 
 // AlertmanagerPayload represents the standard Prometheus Alertmanager v4 webhook payload.
@@ -177,14 +188,38 @@ func (w *Watcher) ScanAndRemediate(ctx context.Context, source string, forceReev
 			continue
 		}
 
+		clusterID := localClusterID()
+		if ev.ClusterID == "" {
+			ev.ClusterID = clusterID
+		}
+		if ev.NodeName != "" && clusterID != "" && !strings.Contains(ev.NodeName, clusterID) {
+			ev.NodeName = fmt.Sprintf("%s (%s)", ev.NodeName, clusterID)
+		}
+		incSource := source
+		if incSource == "CLUSTER_WATCHER" && strings.EqualFold(strings.TrimSpace(os.Getenv("KUBE_DOCTOR_MODE")), "agent") {
+			incSource = "SPOKE_AGENT:" + clusterID
+		}
+
+		eff := w.evaluateSingleIncidentEffectiveness(ctx, ev, assessment, 1)
+		status := "ACTIVE"
+		var resolvedAt *time.Time
+		if eff != nil && eff.VerificationStatus == "VERIFIED_HEALTHY" {
+			status = "RESOLVED"
+			now := time.Now().UTC()
+			resolvedAt = &now
+		}
+
 		rec := IncidentRecord{
-			IncidentID:    fmt.Sprintf("inc-%d", time.Now().UnixNano()),
-			Source:        source,
+			IncidentID:    fmt.Sprintf("inc-%s-%d", clusterID, time.Now().UnixNano()),
+			ClusterID:     clusterID,
+			Status:        status,
+			Source:        incSource,
 			DetectedAt:    time.Now().UTC(),
+			ResolvedAt:    resolvedAt,
 			Event:         ev,
 			Assessment:    assessment,
 			LLMAnalysis:   llmAnalysis,
-			Effectiveness: w.evaluateSingleIncidentEffectiveness(ctx, ev, assessment, 1),
+			Effectiveness: eff,
 		}
 		if rec.Assessment != nil {
 			rec.Assessment.Effectiveness = rec.Effectiveness
@@ -230,14 +265,33 @@ func (w *Watcher) HandleAlertmanagerWebhook(ctx context.Context, payload Alertma
 			return records, err
 		}
 
+		clusterID := localClusterID()
+		if ev.ClusterID == "" {
+			ev.ClusterID = clusterID
+		}
+		if ev.NodeName != "" && clusterID != "" && !strings.Contains(ev.NodeName, clusterID) {
+			ev.NodeName = fmt.Sprintf("%s (%s)", ev.NodeName, clusterID)
+		}
+		eff := w.evaluateSingleIncidentEffectiveness(ctx, ev, assessment, 1)
+		status := "ACTIVE"
+		var resolvedAt *time.Time
+		if eff != nil && eff.VerificationStatus == "VERIFIED_HEALTHY" {
+			status = "RESOLVED"
+			now := time.Now().UTC()
+			resolvedAt = &now
+		}
+
 		rec := IncidentRecord{
-			IncidentID:    fmt.Sprintf("inc-alert-%d", time.Now().UnixNano()),
+			IncidentID:    fmt.Sprintf("inc-alert-%s-%d", clusterID, time.Now().UnixNano()),
+			ClusterID:     clusterID,
+			Status:        status,
 			Source:        "PROMETHEUS_ALERTMANAGER",
 			DetectedAt:    time.Now().UTC(),
+			ResolvedAt:    resolvedAt,
 			Event:         ev,
 			Assessment:    assessment,
 			LLMAnalysis:   llmAnalysis,
-			Effectiveness: w.evaluateSingleIncidentEffectiveness(ctx, ev, assessment, 1),
+			Effectiveness: eff,
 		}
 		if rec.Assessment != nil {
 			rec.Assessment.Effectiveness = rec.Effectiveness
@@ -267,6 +321,34 @@ func (w *Watcher) ListIncidents() []IncidentRecord {
 	return out
 }
 
+// ListActiveIncidents returns only currently unresolved (ACTIVE) incidents (newest first).
+func (w *Watcher) ListActiveIncidents() []IncidentRecord {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	var out []IncidentRecord
+	for i := len(w.incidents) - 1; i >= 0; i-- {
+		inc := w.incidents[i]
+		if !inc.IsResolved() {
+			out = append(out, inc)
+		}
+	}
+	return out
+}
+
+// ListResolvedIncidents returns historical incidents that have been remediated and verified healthy (newest first).
+func (w *Watcher) ListResolvedIncidents() []IncidentRecord {
+	w.mu.RLock()
+	defer w.mu.RUnlock()
+	var out []IncidentRecord
+	for i := len(w.incidents) - 1; i >= 0; i-- {
+		inc := w.incidents[i]
+		if inc.IsResolved() {
+			out = append(out, inc)
+		}
+	}
+	return out
+}
+
 // VerifyRemediationEffectiveness inspects all previously remediated incidents against the live
 // Kubernetes/OpenShift API to confirm whether target Pods/CustomResources recovered (Ready=True),
 // whether any container restarts occurred after the fix, and whether spec drift reverted the patch.
@@ -274,6 +356,7 @@ func (w *Watcher) VerifyRemediationEffectiveness(ctx context.Context) []Incident
 	w.mu.Lock()
 	defer w.mu.Unlock()
 
+	now := time.Now().UTC()
 	for i := range w.incidents {
 		inc := &w.incidents[i]
 		checks := 1
@@ -284,6 +367,15 @@ func (w *Watcher) VerifyRemediationEffectiveness(ctx context.Context) []Incident
 		inc.Effectiveness = rep
 		if inc.Assessment != nil {
 			inc.Assessment.Effectiveness = rep
+		}
+		if rep != nil && rep.VerificationStatus == "VERIFIED_HEALTHY" {
+			inc.Status = "RESOLVED"
+			if inc.ResolvedAt == nil {
+				t := now
+				inc.ResolvedAt = &t
+			}
+		} else {
+			inc.Status = "ACTIVE"
 		}
 	}
 
@@ -416,17 +508,27 @@ func (w *Watcher) Status() map[string]any {
 	defer w.mu.RUnlock()
 	verifiedCount := 0
 	for _, inc := range w.incidents {
-		if inc.Effectiveness != nil && inc.Effectiveness.VerificationStatus == "VERIFIED_HEALTHY" {
+		if inc.IsResolved() {
 			verifiedCount++
 		}
 	}
+	activeCount := len(w.incidents) - verifiedCount
 	return map[string]any{
-		"watchIntervalSeconds":      int(w.interval.Seconds()),
-		"lastScanAt":                w.lastScanAt,
-		"totalIncidents":            len(w.incidents),
-		"verifiedHealthyIncidents":  verifiedCount,
-		"simulatedMode":             w.k8sClient.IsSimulated(),
+		"watchIntervalSeconds":     int(w.interval.Seconds()),
+		"lastScanAt":               w.lastScanAt,
+		"activeIncidents":          activeCount,
+		"resolvedIncidents":        verifiedCount,
+		"totalIncidents":           len(w.incidents),
+		"verifiedHealthyIncidents": verifiedCount,
+		"simulatedMode":            w.k8sClient.IsSimulated(),
 	}
+}
+
+func localClusterID() string {
+	if v := strings.TrimSpace(os.Getenv("KUBE_DOCTOR_CLUSTER_ID")); v != "" {
+		return v
+	}
+	return "kind-local-cluster"
 }
 
 func mapAlertToDiagnosticEvent(alert AlertmanagerAlert) types.DiagnosticEvent {

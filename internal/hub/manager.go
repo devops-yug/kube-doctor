@@ -47,6 +47,7 @@ type ManagedCluster struct {
 	HealthyPodCount   int               `json:"healthyPodCount"`
 	UnhealthyPodCount int               `json:"unhealthyPodCount"`
 	ActiveIncidents   int               `json:"activeIncidents"`
+	ResolvedIncidents int               `json:"resolvedIncidents,omitempty"`
 	PendingApprovals  int               `json:"pendingApprovals"`
 	InstalledAdapters []string          `json:"installedAdapters,omitempty"`
 	Labels            map[string]string `json:"labels,omitempty"`
@@ -160,13 +161,19 @@ func (m *Manager) LocalClusterID() string {
 	return m.localClusterID
 }
 
-// Start launches the Spoke Agent -> Hub heartbeat & command sync loop when KUBE_DOCTOR_HUB_URL is configured.
+	// Start launches the Spoke Agent -> Hub heartbeat & command sync loop when KUBE_DOCTOR_HUB_URL is configured.
 func (m *Manager) Start(ctx context.Context) {
-	// Periodically refresh local cluster stats
+	if m.hubURL != "" {
+		log.Printf("[spoke-agent:%s] Connecting to Central Hub at %s", m.localClusterID, m.hubURL)
+	}
+	// Periodically refresh local cluster stats and sync with Hub
 	go func() {
 		ticker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
 		m.refreshLocalClusterStats(ctx)
+		if m.hubURL != "" {
+			m.syncAgentWithHub(ctx)
+		}
 		for {
 			select {
 			case <-ctx.Done():
@@ -182,6 +189,12 @@ func (m *Manager) Start(ctx context.Context) {
 }
 
 func (m *Manager) refreshLocalClusterStats(ctx context.Context) {
+	var nodeCount, healthyPods, unhealthyPods int
+	var k8sVer string
+	if m.k8sClient != nil {
+		nodeCount, healthyPods, unhealthyPods, k8sVer = m.k8sClient.GetClusterSummaryStats(ctx)
+	}
+
 	m.mu.Lock()
 	c, ok := m.clusters[m.localClusterID]
 	if !ok {
@@ -189,12 +202,50 @@ func (m *Manager) refreshLocalClusterStats(ctx context.Context) {
 		return
 	}
 	c.LastHeartbeatAt = time.Now().UTC()
+	if nodeCount > 0 {
+		c.NodeCount = nodeCount
+	}
+	c.HealthyPodCount = healthyPods
+	c.UnhealthyPodCount = unhealthyPods
+	if k8sVer != "" {
+		c.KubernetesVersion = k8sVer
+	}
 	if m.localWatcher != nil {
 		incs := m.localWatcher.ListIncidents()
-		c.ActiveIncidents = len(incs)
+		c.ActiveIncidents = countActiveIncidents(incs)
+		c.ResolvedIncidents = countResolvedIncidents(incs)
 		m.incidents[m.localClusterID] = incs
 	}
+	if c.UnhealthyPodCount > 0 || c.ActiveIncidents > 0 {
+		c.Status = "DEGRADED"
+	} else {
+		c.Status = "HEALTHY"
+	}
 	m.mu.Unlock()
+}
+
+func countActiveIncidents(incs []watcher.IncidentRecord) int {
+	n := 0
+	for _, inc := range incs {
+		if !inc.IsResolved() {
+			n++
+		}
+	}
+	return n
+}
+
+func countResolvedIncidents(incs []watcher.IncidentRecord) int {
+	n := 0
+	for _, inc := range incs {
+		if inc.IsResolved() {
+			n++
+		}
+	}
+	return n
+}
+
+func hasUnresolvedIncident(incs []watcher.IncidentRecord) bool {
+	return countActiveIncidents(incs) > 0
 }
 
 // RegisterOrHeartbeat registers or updates a managed Spoke Cluster in the Hub.
@@ -250,12 +301,28 @@ func (m *Manager) RegisterOrHeartbeat(ctx context.Context, hb HeartbeatPayload) 
 	var newIncidents []watcher.IncidentRecord
 	for _, ev := range hb.Events {
 		ev.ClusterID = hb.ClusterID
+		m.mu.RLock()
+		alreadyRecorded := false
+		for _, existingInc := range m.incidents[hb.ClusterID] {
+			if (ev.ID != "" && existingInc.Event.ID == ev.ID) ||
+				(ev.PodName != "" && existingInc.Event.Namespace == ev.Namespace && existingInc.Event.PodName == ev.PodName && existingInc.Event.Reason == ev.Reason) {
+				alreadyRecorded = true
+				break
+			}
+		}
+		m.mu.RUnlock()
+		if alreadyRecorded {
+			continue
+		}
+
 		assessment, err := m.remediationEngine.EvaluateAndAct(ctx, ev)
 		if err != nil {
 			continue
 		}
 		rec := watcher.IncidentRecord{
 			IncidentID: fmt.Sprintf("inc-%s-%d", hb.ClusterID, time.Now().UnixNano()),
+			ClusterID:  hb.ClusterID,
+			Status:     "ACTIVE",
 			Source:     "SPOKE_AGENT:" + hb.ClusterID,
 			DetectedAt: now,
 			Event:      ev,
@@ -284,12 +351,43 @@ func (m *Manager) RegisterOrHeartbeat(ctx context.Context, hb HeartbeatPayload) 
 
 	if len(hb.Incidents) > 0 {
 		m.mu.Lock()
-		m.incidents[hb.ClusterID] = append(m.incidents[hb.ClusterID], hb.Incidents...)
+		existing := m.incidents[hb.ClusterID]
+		idxByID := make(map[string]int, len(existing))
+		for i, inc := range existing {
+			idxByID[inc.IncidentID] = i
+		}
+		for _, inc := range hb.Incidents {
+			inc.ClusterID = hb.ClusterID
+			inc.Event.ClusterID = hb.ClusterID
+			if inc.Source == "" || inc.Source == "CLUSTER_WATCHER" {
+				inc.Source = "SPOKE_AGENT:" + hb.ClusterID
+			}
+			if inc.Event.NodeName != "" && !strings.Contains(inc.Event.NodeName, hb.ClusterID) {
+				inc.Event.NodeName = fmt.Sprintf("%s (%s)", inc.Event.NodeName, hb.ClusterID)
+			}
+			if inc.IsResolved() {
+				inc.Status = "RESOLVED"
+				if inc.ResolvedAt == nil {
+					t := now
+					inc.ResolvedAt = &t
+				}
+			} else {
+				inc.Status = "ACTIVE"
+			}
+			if idx, ok := idxByID[inc.IncidentID]; ok {
+				existing[idx] = inc
+			} else {
+				idxByID[inc.IncidentID] = len(existing)
+				existing = append(existing, inc)
+			}
+		}
+		m.incidents[hb.ClusterID] = existing
 		m.mu.Unlock()
 	}
 
 	m.mu.Lock()
-	cluster.ActiveIncidents = len(m.incidents[hb.ClusterID])
+	cluster.ActiveIncidents = countActiveIncidents(m.incidents[hb.ClusterID])
+	cluster.ResolvedIncidents = countResolvedIncidents(m.incidents[hb.ClusterID])
 	if cluster.UnhealthyPodCount > 0 || cluster.ActiveIncidents > 0 {
 		cluster.Status = "DEGRADED"
 	} else {
@@ -297,6 +395,12 @@ func (m *Manager) RegisterOrHeartbeat(ctx context.Context, hb HeartbeatPayload) 
 	}
 	clusterCopy := *cluster
 	m.mu.Unlock()
+
+	if clusterCopy.Status == "DEGRADED" || len(newIncidents) > 0 {
+		log.Printf("[hub] Spoke cluster %s (%s) status=%s nodeCount=%d healthyPods=%d unhealthyPods=%d activeIncidents=%d",
+			clusterCopy.ClusterID, clusterCopy.DisplayName, clusterCopy.Status,
+			clusterCopy.NodeCount, clusterCopy.HealthyPodCount, clusterCopy.UnhealthyPodCount, clusterCopy.ActiveIncidents)
+	}
 
 	return &clusterCopy, newIncidents, nil
 }
@@ -396,25 +500,74 @@ func (m *Manager) ListFleetIncidents(clusterID string) []watcher.IncidentRecord 
 	return all
 }
 
+// ListActiveFleetIncidents returns only unresolved (ACTIVE) incidents across all clusters or filtered by clusterID.
+func (m *Manager) ListActiveFleetIncidents(clusterID string) []watcher.IncidentRecord {
+	all := m.ListFleetIncidents(clusterID)
+	out := make([]watcher.IncidentRecord, 0)
+	for _, inc := range all {
+		if !inc.IsResolved() {
+			out = append(out, inc)
+		}
+	}
+	return out
+}
+
+// ListResolvedFleetIncidents returns resolved/verified-healthy historical incidents across all clusters or filtered by clusterID.
+func (m *Manager) ListResolvedFleetIncidents(clusterID string) []watcher.IncidentRecord {
+	all := m.ListFleetIncidents(clusterID)
+	out := make([]watcher.IncidentRecord, 0)
+	for _, inc := range all {
+		if inc.IsResolved() {
+			out = append(out, inc)
+		}
+	}
+	return out
+}
+
 // syncAgentWithHub pushes local heartbeat & events to the remote Hub and executes any pending Hub commands.
 func (m *Manager) syncAgentWithHub(ctx context.Context) {
 	hb := HeartbeatPayload{
 		ClusterID:         m.localClusterID,
+		DisplayName:       defaultEnv(os.Getenv("KUBE_DOCTOR_DISPLAY_NAME"), "Spoke Cluster ("+m.localClusterID+")"),
+		Environment:       defaultEnv(os.Getenv("KUBE_DOCTOR_ENV"), "edge"),
+		Region:            defaultEnv(os.Getenv("KUBE_DOCTOR_REGION"), "raspberry-pi-lan"),
 		KubernetesVersion: "v1.35.2",
 		OpenShiftVersion:  "4.22.1",
-		InstalledAdapters: []string{"cloudnative-pg", "noobaa-odf", "strimzi-kafka"},
+		InstalledAdapters: []string{"cloudnative-pg", "noobaa-odf", "strimzi-kafka", "percona-pg"},
+	}
+	if m.k8sClient != nil {
+		nodeCount, healthyPods, unhealthyPods, k8sVer := m.k8sClient.GetClusterSummaryStats(ctx)
+		hb.NodeCount = nodeCount
+		hb.HealthyPodCount = healthyPods
+		hb.UnhealthyPodCount = unhealthyPods
+		if k8sVer != "" {
+			hb.KubernetesVersion = k8sVer
+		}
 	}
 	if m.localWatcher != nil {
 		hb.Incidents = m.localWatcher.ListIncidents()
+		if hb.UnhealthyPodCount > 0 && len(hb.Incidents) == 0 {
+			if _, err := m.localWatcher.ScanAndRemediate(ctx, "SPOKE_AGENT:"+m.localClusterID, false); err == nil {
+				hb.Incidents = m.localWatcher.ListIncidents()
+			}
+		}
+	}
+	if m.k8sClient != nil && hb.UnhealthyPodCount > 0 && len(hb.Incidents) == 0 {
+		if liveEvents, err := m.k8sClient.ScanClusterHealth(ctx); err == nil && len(liveEvents) > 0 {
+			hb.Events = liveEvents
+		}
 	}
 	bodyBytes, _ := json.Marshal(hb)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, m.hubURL+"/v1/hub/clusters/heartbeat", bytes.NewReader(bodyBytes))
 	if err == nil {
 		req.Header.Set("Content-Type", "application/json")
-		if resp, doErr := m.httpClient.Do(req); doErr == nil {
-			_, _ = io.ReadAll(resp.Body)
-			_ = resp.Body.Close()
+		resp, doErr := m.httpClient.Do(req)
+		if doErr != nil {
+			log.Printf("[spoke-agent:%s] Heartbeat to Hub %s failed: %v", m.localClusterID, m.hubURL, doErr)
+			return
 		}
+		_, _ = io.ReadAll(resp.Body)
+		_ = resp.Body.Close()
 	}
 
 	// Poll pending commands from Hub

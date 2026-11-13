@@ -56,9 +56,7 @@ func main() {
 	apiServer.SetHubManager(hubManager)
 
 	ctx := context.Background()
-	if hubManager.Mode() != hub.ModeHub {
-		clusterWatcher.Start(ctx)
-	}
+	clusterWatcher.Start(ctx)
 	hubManager.Start(ctx)
 
 	srv := &http.Server{

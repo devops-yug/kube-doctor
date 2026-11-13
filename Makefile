@@ -3,14 +3,21 @@ IMAGE_TAG    ?= v1.35-ocp4.22
 IMAGE        ?= localhost/$(IMAGE_NAME):$(IMAGE_TAG)
 IMAGE_TAR    ?= /tmp/kube-doctor-image.tar
 KIND_CLUSTER ?= kind
+TARGET_ARCH  ?= $(shell go env GOARCH)
+HUB_IP       ?= $(shell hostname -I 2>/dev/null | awk '{print $$1}')
+CLUSTER_ID   ?= raspberrypi-arm64
 
-.PHONY: all build test dataset train-qlora train-axolotl-podman ollama-build podman-build kind-load deploy-k8s deploy-openshift undeploy
+.PHONY: all build build-arm64 test dataset train-qlora train-axolotl-podman ollama-build podman-build podman-build-arm64 podman-build-multiarch kind-load deploy-k8s deploy-hub deploy-agent run-hub deploy-openshift undeploy
 
 all: test build
 
-## Build local kube-doctor Go binary
+## Build local kube-doctor Go binary (auto-detects host arch, or override with TARGET_ARCH=arm64)
 build:
-	CGO_ENABLED=0 go build -o bin/kube-doctor ./cmd/kube-doctor
+	CGO_ENABLED=0 GOOS=linux GOARCH=$(TARGET_ARCH) go build -ldflags="-s -w" -o bin/kube-doctor ./cmd/kube-doctor
+
+## Cross-compile kube-doctor Go binary for ARM64 (Raspberry Pi 4/5 64-bit OS)
+build-arm64:
+	CGO_ENABLED=0 GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o bin/kube-doctor-linux-arm64 ./cmd/kube-doctor
 
 ## Run all unit & integration tests
 test:
@@ -33,9 +40,21 @@ train-axolotl-podman: dataset
 ollama-build:
 	ollama create kube-doctor-1.35-ocp-4.22 -f training/Modelfile
 
-## Build container image with Podman (uses multi-stage golang:1.23-alpine builder)
+## Build container image with Podman for current host arch (or override: make podman-build TARGET_ARCH=arm64)
 podman-build:
-	podman build -t $(IMAGE) .
+	podman build --platform linux/$(TARGET_ARCH) --build-arg TARGETARCH=$(TARGET_ARCH) -t $(IMAGE) .
+
+## Build ARM64 container image for Raspberry Pi (linux/arm64) and export to $(IMAGE_TAR)
+podman-build-arm64:
+	podman build --platform linux/arm64 --build-arg TARGETARCH=arm64 -t $(IMAGE) .
+	podman save --format oci-archive -o $(IMAGE_TAR) $(IMAGE)
+	@echo "Saved ARM64 image to $(IMAGE_TAR)"
+
+## Build multi-arch manifest (linux/amd64 + linux/arm64) with Podman
+podman-build-multiarch:
+	-podman manifest rm $(IMAGE)-multiarch 2>/dev/null || true
+	podman manifest create $(IMAGE)-multiarch
+	podman build --platform linux/amd64,linux/arm64 --manifest $(IMAGE)-multiarch .
 
 ## Create a local kind cluster if it does not already exist
 kind-cluster:
@@ -58,6 +77,35 @@ kind-load: podman-build kind-cluster
 deploy-k8s:
 	kubectl apply -f deploy/crd/remediationrequest.kubedoctor.io.yaml
 	kubectl apply -f deploy/kubernetes/deployment.yaml
+	kubectl -n kube-doctor-system rollout restart deployment/kube-doctor
+	kubectl -n kube-doctor-system rollout status deployment/kube-doctor --timeout=120s
+
+## Deploy kube-doctor in Central Hub Mode (--mode=hub) on this machine's cluster
+deploy-hub:
+	kubectl apply -f deploy/crd/remediationrequest.kubedoctor.io.yaml
+	kubectl apply -f deploy/kubernetes/hub-deployment.yaml
+	kubectl -n kube-doctor-system rollout restart deployment/kube-doctor
+	kubectl -n kube-doctor-system rollout status deployment/kube-doctor --timeout=120s
+	@echo "Hub deployed! Expose to LAN for Raspberry Pi agent with:"
+	@echo "  kubectl -n kube-doctor-system port-forward --address 0.0.0.0 svc/kube-doctor 8080:8080"
+
+## Run kube-doctor directly on this host in Central Hub Mode (--mode=hub, listening on 0.0.0.0:8080)
+run-hub: build
+	KUBE_DOCTOR_MODE=hub KUBE_DOCTOR_CLUSTER_ID=hub-control-plane PORT=8080 ./bin/kube-doctor --mode=hub
+
+## Forward Hub port 8080 on 0.0.0.0 inside WSL2/Linux and print Windows WSL2 LAN firewall commands
+expose-hub:
+	-pkill -f "port-forward.*svc/kube-doctor" 2>/dev/null || true
+	kubectl -n kube-doctor-system port-forward --address 0.0.0.0 svc/kube-doctor 8080:8080 &
+	@sleep 1
+	@echo "Listening on 0.0.0.0:8080 inside WSL2."
+	@echo "If running on WSL2, run this in an Administrator PowerShell on Windows so the Raspberry Pi can reach 192.168.68.59:8080:"
+	@echo "  \$$wslIp = (wsl hostname -I).Trim().Split(' ')[0]; netsh interface portproxy add v4tov4 listenport=8080 listenaddress=0.0.0.0 connectport=8080 connectaddress=\$$wslIp; New-NetFirewallRule -DisplayName 'kube-doctor-hub-8080' -Direction Inbound -LocalPort 8080,11434 -Protocol TCP -Action Allow"
+
+## Deploy kube-doctor in Spoke Agent Mode (--mode=agent) on Raspberry Pi (connects via 127.0.0.1:18080 SSH reverse tunnel by default)
+deploy-agent:
+	kubectl apply -f deploy/crd/remediationrequest.kubedoctor.io.yaml
+	kubectl apply -f deploy/kubernetes/agent-deployment.yaml
 	kubectl -n kube-doctor-system rollout restart deployment/kube-doctor
 	kubectl -n kube-doctor-system rollout status deployment/kube-doctor --timeout=120s
 
