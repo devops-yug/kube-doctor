@@ -99,11 +99,17 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Normalize lowercase repository & owner names for OCI/GHCR
+        id: vars
+        run: |
+          echo "image_name=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+          echo "owner=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
       - name: Extract Docker metadata for kube-doctor
         id: meta-main
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ steps.vars.outputs.image_name }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
@@ -128,9 +134,10 @@ jobs:
 
       - name: Generate SLSA Build Provenance Attestation
         if: github.event_name != 'pull_request'
+        continue-on-error: true
         uses: actions/attest-build-provenance@v2
         with:
-          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-name: ${{ env.REGISTRY }}/${{ steps.vars.outputs.image_name }}
           subject-digest: ${{ steps.build-main.outputs.digest }}
           push-to-registry: true
 
@@ -142,8 +149,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-console-plugin:v1.35-ocp4.22
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-console-plugin:latest
+            ${{ env.REGISTRY }}/${{ steps.vars.outputs.image_name }}-console-plugin:v1.35-ocp4.22
+            ${{ env.REGISTRY }}/${{ steps.vars.outputs.image_name }}-console-plugin:latest
 
       - name: Build and push OpenShift Operator OLM Bundle image to GHCR
         uses: docker/build-push-action@v6
@@ -153,11 +160,16 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-operator-bundle:v1.35-ocp4.22
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-operator-bundle:latest
+            ${{ env.REGISTRY }}/${{ steps.vars.outputs.image_name }}-operator-bundle:v1.35-ocp4.22
+            ${{ env.REGISTRY }}/${{ steps.vars.outputs.image_name }}-operator-bundle:latest
+
+      - name: Set up Helm for OCI packaging
+        if: github.event_name != 'pull_request'
+        uses: azure/setup-helm@v4
 
       - name: Package & Push Helm Chart to GHCR OCI Registry
         if: github.event_name != 'pull_request'
         run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | helm registry login ${{ env.REGISTRY }} -u "${{ github.actor }}" --password-stdin
           helm package charts/kube-doctor --destination /tmp/charts
-          helm push /tmp/charts/kube-doctor-*.tgz oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/charts
+          helm push /tmp/charts/kube-doctor-*.tgz oci://${{ env.REGISTRY }}/${{ steps.vars.outputs.owner }}/charts

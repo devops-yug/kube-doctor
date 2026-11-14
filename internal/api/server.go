@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"github.com/luigi/kube-doctor/internal/k8s"
 	"github.com/luigi/kube-doctor/internal/llm"
 	"github.com/luigi/kube-doctor/internal/mcp"
+	"github.com/luigi/kube-doctor/internal/operator"
 	"github.com/luigi/kube-doctor/internal/remediation"
 	"github.com/luigi/kube-doctor/internal/types"
 	"github.com/luigi/kube-doctor/internal/watcher"
@@ -27,14 +29,15 @@ import (
 // Prometheus Alertmanager Webhook Receiver (/v1/webhooks/alertmanager),
 // and Approval API (/v1/approvals).
 type Server struct {
-	llmEngine         *llm.Engine
-	remediationEngine *remediation.Engine
-	gitopsManager     *gitops.Manager
-	k8sClient         *k8s.Client
-	mcpServer         *mcp.Server
-	clusterWatcher    *watcher.Watcher
-	hubManager        *hub.Manager
-	mux               *http.ServeMux
+	llmEngine          *llm.Engine
+	remediationEngine  *remediation.Engine
+	gitopsManager      *gitops.Manager
+	k8sClient          *k8s.Client
+	mcpServer          *mcp.Server
+	clusterWatcher     *watcher.Watcher
+	hubManager         *hub.Manager
+	operatorController *operator.Controller
+	mux                *http.ServeMux
 }
 
 // NewServer constructs and wires all routes for kube-doctor.
@@ -73,6 +76,11 @@ func (s *Server) SetHubManager(hm *hub.Manager) {
 	}
 }
 
+// SetOperatorController attaches the OpenShift Operator Reconciler for KubeDoctor and RemediationRequest CRs.
+func (s *Server) SetOperatorController(oc *operator.Controller) {
+	s.operatorController = oc
+}
+
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-GitHub-Token, X-Copilot-Integration-Id, Mcp-Session-Id, Accept")
@@ -86,6 +94,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/healthz", s.handleHealthz)
+	s.mux.HandleFunc("/ui", s.handleConsolePluginUI)
+	s.mux.HandleFunc("/console-plugin/", s.handleConsolePluginUI)
 	s.mux.HandleFunc("/v1/models", s.handleModels)
 	s.mux.HandleFunc("/v1/chat/completions", s.handleChatCompletions)
 	s.mux.HandleFunc("/copilot/agent", s.handleCopilotExtension)
@@ -94,8 +104,15 @@ func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/v1/incidents", s.handleIncidentsList)
 	s.mux.HandleFunc("/v1/effectiveness", s.handleEffectivenessVerify)
 	s.mux.HandleFunc("/v1/webhooks/alertmanager", s.handleAlertmanagerWebhook)
+	s.mux.HandleFunc("/v1/webhooks/github", s.handleGitHubWebhook)
+	s.mux.HandleFunc("/v1/webhooks/gitlab", s.handleGitLabWebhook)
 	s.mux.HandleFunc("/v1/approvals", s.handleApprovalsList)
 	s.mux.HandleFunc("/v1/approvals/", s.handleApprovalAction)
+	s.mux.HandleFunc("/v1/gitops/status", s.handleGitOpsStatus)
+	s.mux.HandleFunc("/v1/gitops/config", s.handleGitOpsConfig)
+	s.mux.HandleFunc("/v1/gitops/oauth/", s.handleGitOpsOAuth)
+	s.mux.HandleFunc("/v1/operator/status", s.handleOperatorStatus)
+	s.mux.HandleFunc("/v1/operator/reconcile", s.handleOperatorReconcile)
 	s.mux.HandleFunc("/v1/audit", s.handleAuditLog)
 	s.mux.HandleFunc("/v1/adapters", s.handleAdapters)
 	s.mux.HandleFunc("/v1/hierarchy", s.handleHierarchyInspect)
@@ -287,6 +304,7 @@ func (s *Server) handleApprovalAction(w http.ResponseWriter, r *http.Request) {
 
 	var body struct {
 		ApprovedBy string `json:"approvedBy"`
+		Provider   string `json:"provider"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&body)
 	if body.ApprovedBy == "" {
@@ -306,6 +324,14 @@ func (s *Server) handleApprovalAction(w http.ResponseWriter, r *http.Request) {
 		req, err := s.gitopsManager.Reject(approvalID, body.ApprovedBy)
 		if err != nil {
 			writeJSON(w, http.StatusNotFound, map[string]any{"error": err.Error(), "approvalId": approvalID})
+			return
+		}
+		writeJSON(w, http.StatusOK, req)
+
+	case "create-pr":
+		req, err := s.gitopsManager.CreateSCMRequestForApproval(r.Context(), approvalID, body.Provider)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error(), "approvalId": approvalID})
 			return
 		}
 		writeJSON(w, http.StatusOK, req)
@@ -566,6 +592,193 @@ func (s *Server) handleHubClusterSubroutes(w http.ResponseWriter, r *http.Reques
 	default:
 		writeJSON(w, http.StatusNotFound, map[string]any{"error": fmt.Sprintf("unknown hub subroute %q", sub)})
 	}
+}
+
+func (s *Server) handleGitOpsStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"error": "method not allowed"})
+		return
+	}
+	writeJSON(w, http.StatusOK, s.gitopsManager.GetIntegrationStatus())
+}
+
+func (s *Server) handleGitOpsConfig(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost && r.Method != http.MethodPut {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"error": "method not allowed"})
+		return
+	}
+	var payload struct {
+		ApprovalMode     string                     `json:"approvalMode"`
+		InClusterAllowed *bool                      `json:"inClusterAllowed"`
+		Provider         string                     `json:"provider"`
+		ClientID         string                     `json:"clientId"`
+		ClientSecret     string                     `json:"clientSecret"`
+		RedirectURI      string                     `json:"redirectUri"`
+		WebURL           string                     `json:"webUrl"`
+		APIURL           string                     `json:"apiUrl"`
+		Repository       string                     `json:"repository"`
+		BaseBranch       string                     `json:"baseBranch"`
+		AccessToken      string                     `json:"accessToken"`
+		GitHub           *gitops.OAuthProviderConfig `json:"github"`
+		GitLab           *gitops.OAuthProviderConfig `json:"gitlab"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		return
+	}
+	if payload.ApprovalMode != "" || payload.InClusterAllowed != nil {
+		inCluster := true
+		if payload.InClusterAllowed != nil {
+			inCluster = *payload.InClusterAllowed
+		}
+		s.gitopsManager.SetApprovalMode(payload.ApprovalMode, inCluster)
+	}
+	if payload.Provider != "" {
+		if _, err := s.gitopsManager.ConfigureProvider(gitops.OAuthProviderConfig{
+			Provider:     payload.Provider,
+			ClientID:     payload.ClientID,
+			ClientSecret: payload.ClientSecret,
+			RedirectURI:  payload.RedirectURI,
+			WebURL:       payload.WebURL,
+			APIURL:       payload.APIURL,
+			Repository:   payload.Repository,
+			BaseBranch:   payload.BaseBranch,
+			AccessToken:  payload.AccessToken,
+		}); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+			return
+		}
+	}
+	if payload.GitHub != nil {
+		payload.GitHub.Provider = "github"
+		_, _ = s.gitopsManager.ConfigureProvider(*payload.GitHub)
+	}
+	if payload.GitLab != nil {
+		payload.GitLab.Provider = "gitlab"
+		_, _ = s.gitopsManager.ConfigureProvider(*payload.GitLab)
+	}
+	writeJSON(w, http.StatusOK, s.gitopsManager.GetIntegrationStatus())
+}
+
+func (s *Server) handleGitOpsOAuth(w http.ResponseWriter, r *http.Request) {
+	// Expected path: /v1/gitops/oauth/{provider}/{action} where action is authorize, callback, or disconnect
+	trimmed := strings.TrimPrefix(r.URL.Path, "/v1/gitops/oauth/")
+	parts := strings.Split(trimmed, "/")
+	if len(parts) < 2 {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": "expected /v1/gitops/oauth/{github|gitlab}/{authorize|callback|disconnect}"})
+		return
+	}
+	provider := parts[0]
+	action := parts[1]
+
+	switch action {
+	case "authorize":
+		redir := r.URL.Query().Get("redirect_uri")
+		authURL, state, err := s.gitopsManager.GetOAuthAuthorizeURL(provider, redir)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+			return
+		}
+		if r.URL.Query().Get("redirect") == "true" {
+			http.Redirect(w, r, authURL, http.StatusFound)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"provider":     provider,
+			"authorizeUrl": authURL,
+			"state":        state,
+		})
+
+	case "callback":
+		code := r.URL.Query().Get("code")
+		state := r.URL.Query().Get("state")
+		if code == "" && r.Method == http.MethodPost {
+			var body struct {
+				Code  string `json:"code"`
+				State string `json:"state"`
+			}
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			code = body.Code
+			state = body.State
+		}
+		st, err := s.gitopsManager.ExchangeOAuthCode(r.Context(), provider, code, state)
+		if err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"status":   "connected",
+			"provider": st,
+		})
+
+	case "disconnect":
+		if err := s.gitopsManager.DisconnectProvider(provider); err != nil {
+			writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, s.gitopsManager.GetIntegrationStatus())
+
+	default:
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": fmt.Sprintf("unknown oauth action %q", action)})
+	}
+}
+
+func (s *Server) handleGitHubWebhook(w http.ResponseWriter, r *http.Request) {
+	s.handleSCMWebhookCommon(w, r, "github")
+}
+
+func (s *Server) handleGitLabWebhook(w http.ResponseWriter, r *http.Request) {
+	s.handleSCMWebhookCommon(w, r, "gitlab")
+}
+
+func (s *Server) handleSCMWebhookCommon(w http.ResponseWriter, r *http.Request, provider string) {
+	if r.Method != http.MethodPost {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"error": "method not allowed"})
+		return
+	}
+	raw, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		return
+	}
+	req, err := s.gitopsManager.HandleSCMWebhook(r.Context(), provider, raw, s.remediationEngine.ExecuteApprovedAction)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]any{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"status":   "approved_and_executed",
+		"provider": provider,
+		"approval": req,
+	})
+}
+
+func (s *Server) handleOperatorStatus(w http.ResponseWriter, r *http.Request) {
+	if s.operatorController == nil {
+		writeJSON(w, http.StatusOK, map[string]any{
+			"operatorPhase":        "Standalone",
+			"consolePluginEnabled": true,
+		})
+		return
+	}
+	writeJSON(w, http.StatusOK, s.operatorController.Status())
+}
+
+func (s *Server) handleOperatorReconcile(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost && r.Method != http.MethodGet {
+		writeJSON(w, http.StatusMethodNotAllowed, map[string]any{"error": "method not allowed"})
+		return
+	}
+	if s.operatorController == nil {
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{"error": "operator controller not initialized"})
+		return
+	}
+	summary, err := s.operatorController.ReconcileOnce(r.Context())
+	if err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]any{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, summary)
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {

@@ -23,6 +23,12 @@ build-arm64:
 test:
 	go test -v ./...
 
+## Run unit tests and verify >=90% code coverage across all packages
+test-coverage:
+	go test -coverprofile=coverage.out ./...
+	go tool cover -func=coverage.out | tail -n 1
+	rm -f coverage.out
+
 ## Generate the SFT + Tool-Calling dataset for QLoRA fine-tuning (all 26 IssueTypes)
 dataset:
 	python3 training/dataset_generator.py
@@ -109,11 +115,17 @@ deploy-agent:
 	kubectl -n kube-doctor-system rollout restart deployment/kube-doctor
 	kubectl -n kube-doctor-system rollout status deployment/kube-doctor --timeout=120s
 
-## Deploy RemediationRequest CRD + kube-doctor + kubernetes-mcp-server sidecar + Route to OpenShift 4.22+
+## Deploy RemediationRequest + KubeDoctor CRDs + kube-doctor + OpenShift Console Plugin + Route to OpenShift 4.22+
 deploy-openshift:
 	oc apply -f deploy/crd/remediationrequest.kubedoctor.io.yaml
+	oc apply -f deploy/crd/kubedoctor.kubedoctor.io.yaml
 	oc apply -f deploy/openshift/deployment.yaml
+	oc apply -f deploy/openshift/console-plugin.yaml
 	oc -n kube-doctor-system rollout status deployment/kube-doctor --timeout=120s
+
+## Install or upgrade kube-doctor via Helm chart (charts/kube-doctor)
+helm-install:
+	helm upgrade --install kube-doctor ./charts/kube-doctor --namespace kube-doctor-system --create-namespace
 
 ## Remove kube-doctor from the cluster
 undeploy:

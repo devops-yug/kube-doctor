@@ -28,6 +28,12 @@ spec:
         - name: Severity
           type: string
           jsonPath: .spec.severity
+        - name: Mode
+          type: string
+          jsonPath: .spec.approvalMode
+        - name: Approved
+          type: boolean
+          jsonPath: .spec.approved
         - name: Phase
           type: string
           jsonPath: .status.phase
@@ -37,9 +43,11 @@ spec:
       schema:
         openAPIV3Schema:
           type: object
+          x-kubernetes-preserve-unknown-fields: true
           properties:
             spec:
               type: object
+              x-kubernetes-preserve-unknown-fields: true
               properties:
                 issueType:
                   type: string
@@ -49,9 +57,19 @@ spec:
                   type: string
                 reason:
                   type: string
+                approvalMode:
+                  type: string
+                  enum: ["IN_CLUSTER", "GITHUB_PR", "GITLAB_MR", "HYBRID"]
+                inClusterAllowed:
+                  type: boolean
+                approved:
+                  type: boolean
+                  description: "Set to true in-cluster or via the OpenShift Console UI Plugin to approve and execute the remediation immediately."
                 gitOpsPullRequest:
                   type: object
                   properties:
+                    provider:
+                      type: string
                     url:
                       type: string
                     branch:
@@ -82,4 +100,3 @@ spec:
                   type: string
                 executedAt:
                   type: string
-

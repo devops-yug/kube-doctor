@@ -14,14 +14,26 @@ import (
 	"github.com/luigi/kube-doctor/internal/k8s"
 	"github.com/luigi/kube-doctor/internal/llm"
 	"github.com/luigi/kube-doctor/internal/mcp"
+	"github.com/luigi/kube-doctor/internal/operator"
 	"github.com/luigi/kube-doctor/internal/rag"
 	"github.com/luigi/kube-doctor/internal/remediation"
 	"github.com/luigi/kube-doctor/internal/watcher"
 )
 
 func main() {
-	modeFlag := flag.String("mode", os.Getenv("KUBE_DOCTOR_MODE"), "Deployment mode: standalone | hub | agent")
-	flag.Parse()
+	if err := run(context.Background(), os.Args[1:], func(srv *http.Server) error {
+		return srv.ListenAndServe()
+	}); err != nil {
+		log.Fatalf("server failed: %v", err)
+	}
+}
+
+func run(ctx context.Context, args []string, listenFn func(srv *http.Server) error) error {
+	fs := flag.NewFlagSet("kube-doctor", flag.ContinueOnError)
+	modeFlag := fs.String("mode", os.Getenv("KUBE_DOCTOR_MODE"), "Deployment mode: standalone | hub | agent")
+	if err := fs.Parse(args); err != nil {
+		return err
+	}
 
 	mode := *modeFlag
 	if mode == "" {
@@ -49,15 +61,17 @@ func main() {
 	llmEngine := llm.NewEngine(ragEngine, remEngine, k8sClient)
 	clusterWatcher := watcher.NewWatcher(k8sClient, remEngine, llmEngine)
 	hubManager := hub.NewManager(mode, k8sClient, remEngine, clusterWatcher)
+	operatorCtrl := operator.NewController(k8sClient, gitopsManager, remEngine)
 	mcpServer := mcp.NewServer(ragEngine, remEngine, gitopsManager, k8sMCPClient)
 	mcpServer.SetHubAndK8sClient(hubManager, k8sClient)
 	apiServer := api.NewServer(llmEngine, remEngine, gitopsManager, k8sClient, mcpServer)
 	apiServer.SetWatcher(clusterWatcher)
 	apiServer.SetHubManager(hubManager)
+	apiServer.SetOperatorController(operatorCtrl)
 
-	ctx := context.Background()
 	clusterWatcher.Start(ctx)
 	hubManager.Start(ctx)
+	operatorCtrl.Start(ctx)
 
 	srv := &http.Server{
 		Addr:         addr,
@@ -68,6 +82,9 @@ func main() {
 
 	log.Printf("kube-doctor (Kubernetes >= 1.35 / OpenShift >= 4.22 Specialized LLM & Remediation Gateway) listening on %s [mode=%s, cluster=%s]",
 		addr, hubManager.Mode(), hubManager.LocalClusterID())
+	log.Printf("  - OpenShift Console UI Plugin:     GET  http://localhost%s/ui", addr)
+	log.Printf("  - OpenShift Operator Reconciler:   GET/POST http://localhost%s/v1/operator/status", addr)
+	log.Printf("  - GitHub & GitLab OAuth GitOps:    GET/POST http://localhost%s/v1/gitops/status", addr)
 	log.Printf("  - Autonomous Cluster Watcher:      active (live Kubernetes API + Operator CRD health loop)")
 	log.Printf("  - Multi-Cluster Hub Fleet API:     GET/POST http://localhost%s/v1/hub/clusters", addr)
 	log.Printf("  - Operator Adapters & Lineage API: GET  http://localhost%s/v1/adapters & /v1/hierarchy", addr)
@@ -78,7 +95,8 @@ func main() {
 	log.Printf("  - GitHub Copilot Extension:        POST http://localhost%s/copilot/agent", addr)
 	log.Printf("  - MCP Server (+k8s-mcp-server):    POST http://localhost%s/mcp", addr)
 
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("server failed: %v", err)
+	if err := listenFn(srv); err != nil && err != http.ErrServerClosed {
+		return err
 	}
+	return nil
 }

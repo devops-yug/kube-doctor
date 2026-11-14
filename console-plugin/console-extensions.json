@@ -1,0 +1,22 @@
+[
+  {
+    "type": "console.page/route",
+    "properties": {
+      "exact": true,
+      "path": "/kube-doctor",
+      "component": {
+        "$codeRef": "KubeDoctorDashboard"
+      }
+    }
+  },
+  {
+    "type": "console.navigation/href",
+    "properties": {
+      "id": "kube-doctor-incidents-nav",
+      "name": "Kube-Doctor SRE Incidents & Approvals",
+      "href": "/kube-doctor",
+      "perspective": "admin",
+      "section": "observe"
+    }
+  }
+]

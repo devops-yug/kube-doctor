@@ -1,0 +1,48 @@
+{{- if .Values.rbac.create -}}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "kube-doctor.fullname" . }}-remediator
+  labels:
+    {{- include "kube-doctor.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "events", "nodes", "nodes/proxy", "namespaces", "resourcequotas", "limitranges", "persistentvolumeclaims", "services"]
+    verbs: ["get", "list", "watch", "patch", "update", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/resize"]
+    verbs: ["patch", "update"]
+  - apiGroups: ["apps"]
+    resources: ["statefulsets", "statefulsets/scale", "deployments", "deployments/scale", "daemonsets", "replicasets"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["machine.openshift.io"]
+    resources: ["machines", "machinesets", "machinesets/scale", "machinehealthchecks"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["config.openshift.io", "operator.openshift.io", "machineconfiguration.openshift.io", "route.openshift.io", "console.openshift.io"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["postgresql.cnpg.io", "noobaa.io", "ocs.openshift.io", "kafka.strimzi.io", "pgv2.percona.com"]
+    resources: ["*"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["kubedoctor.io"]
+    resources: ["remediationrequests", "remediationrequests/status", "kubedoctors", "kubedoctors/status"]
+    verbs: ["get", "list", "watch", "create", "patch", "update", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "kube-doctor.fullname" . }}-remediator
+  labels:
+    {{- include "kube-doctor.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "kube-doctor.fullname" . }}-remediator
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "kube-doctor.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end -}}

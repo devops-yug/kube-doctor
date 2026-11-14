@@ -1,0 +1,15 @@
+Thank you for installing {{ .Chart.Name }} ({{ .Chart.AppVersion }})!
+
+Mode: {{ .Values.mode }}
+Namespace: {{ .Release.Namespace }}
+Approval Governance Mode: {{ .Values.gitops.approvalMode }} (In-Cluster Approval: {{ .Values.gitops.inClusterApproval }})
+
+1. Access the Kube-Doctor API & OpenShift Console UI Plugin locally:
+   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "kube-doctor.fullname" . }} 8080:{{ .Values.service.port }}
+   Open: http://localhost:8080/ui
+
+{{- if .Values.openshift.consolePlugin.enabled }}
+2. Enable the OpenShift 4.22+ Dynamic Console Plugin in the OpenShift Web Console:
+   oc patch console.operator.openshift.io cluster --type=json \
+     -p='[{"op":"add","path":"/spec/plugins/-","value":"{{ .Values.openshift.consolePlugin.name }}"}]'
+{{- end }}

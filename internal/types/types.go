@@ -244,26 +244,29 @@ type RemediationAction struct {
 }
 
 // ApprovalRequest represents a pending human approval backed by both a Kubernetes
-// RemediationRequest CRD (kubedoctor.io/v1alpha1) and a GitOps Pull Request.
+// RemediationRequest CRD (kubedoctor.io/v1alpha1) and a GitOps Pull Request / Merge Request.
 type ApprovalRequest struct {
-	ID              string              `json:"id"`
-	ClusterID       string              `json:"clusterId,omitempty"`
-	CRDName         string              `json:"crdName"`
-	Namespace       string              `json:"namespace"`
-	IssueType       IssueType           `json:"issueType"`
-	Criticality     Criticality         `json:"criticality"`
-	Severity        Severity            `json:"severity"`
-	Reason          string              `json:"reason"`
-	Action          RemediationAction   `json:"action"`
-	FollowUpActions []RemediationAction `json:"followUpActions,omitempty"`
-	GitOpsPRNumber  int                 `json:"gitOpsPrNumber,omitempty"`
-	GitOpsPRURL     string              `json:"gitOpsPrUrl,omitempty"`
-	GitOpsBranch    string              `json:"gitOpsBranch,omitempty"`
-	CRDManifestYAML string              `json:"crdManifestYaml"`
-	Status          string              `json:"status"` // "PENDING", "APPROVED", "REJECTED"
-	ApprovedBy      string              `json:"approvedBy,omitempty"`
-	CreatedAt       time.Time           `json:"createdAt"`
-	UpdatedAt       time.Time           `json:"updatedAt"`
+	ID               string              `json:"id"`
+	ClusterID        string              `json:"clusterId,omitempty"`
+	CRDName          string              `json:"crdName"`
+	Namespace        string              `json:"namespace"`
+	IssueType        IssueType           `json:"issueType"`
+	Criticality      Criticality         `json:"criticality"`
+	Severity         Severity            `json:"severity"`
+	Reason           string              `json:"reason"`
+	ApprovalMode     string              `json:"approvalMode,omitempty"`     // "IN_CLUSTER", "GITHUB_PR", "GITLAB_MR", "HYBRID"
+	GitProvider      string              `json:"gitProvider,omitempty"`      // "in-cluster", "github", "gitlab"
+	InClusterAllowed bool                `json:"inClusterAllowed"`           // true when resource is managed in-cluster and can be approved directly in OpenShift Console
+	Action           RemediationAction   `json:"action"`
+	FollowUpActions  []RemediationAction `json:"followUpActions,omitempty"`
+	GitOpsPRNumber   int                 `json:"gitOpsPrNumber,omitempty"`
+	GitOpsPRURL      string              `json:"gitOpsPrUrl,omitempty"`
+	GitOpsBranch     string              `json:"gitOpsBranch,omitempty"`
+	CRDManifestYAML  string              `json:"crdManifestYaml"`
+	Status           string              `json:"status"` // "PENDING", "APPROVED", "REJECTED"
+	ApprovedBy       string              `json:"approvedBy,omitempty"`
+	CreatedAt        time.Time           `json:"createdAt"`
+	UpdatedAt        time.Time           `json:"updatedAt"`
 }
 
 // OpenAI Chat Completions compatible types so any Copilot extension or IDE agent can use kube-doctor.

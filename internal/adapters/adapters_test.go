@@ -2,9 +2,15 @@ package adapters_test
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
+	"github.com/luigi/kube-doctor/internal/adapters"
 	"github.com/luigi/kube-doctor/internal/gitops"
 	"github.com/luigi/kube-doctor/internal/hub"
 	"github.com/luigi/kube-doctor/internal/k8s"
@@ -183,4 +189,150 @@ func TestZeroConfigUnknownCRDIntrospectionAndFieldSelection(t *testing.T) {
 		t.Fatalf("expected EffectivenessReport VERIFIED_HEALTHY (score=100), got %+v", verified[0].Effectiveness)
 	}
 }
+
+func TestRegistryDeclarativeAndAIFieldSelection(t *testing.T) {
+	ctx := context.Background()
+
+	// Create temporary directory with JSON and YAML adapter definitions
+	tmpDir := t.TempDir()
+	_ = os.Mkdir(filepath.Join(tmpDir, "subdir"), 0755)
+	_ = os.WriteFile(filepath.Join(tmpDir, "ignore.txt"), []byte("ignore"), 0600)
+	jsonSpec := `{
+		"name": "strimzi-kafka",
+		"description": "Strimzi Kafka Operator",
+		"primaryGvk": {"apiVersion": "kafka.strimzi.io/v1beta2", "kind": "Kafka", "plural": "kafkas", "role": "rootController"},
+		"podLabelKeys": ["strimzi.io/cluster"],
+		"autoRemediateMemory": false,
+		"crdSchemaFields": [
+			{"path": "spec.kafka.resources.limits.memory", "type": "string"},
+			{"path": "spec.kafka.resources.requests.memory", "type": "string"},
+			{"path": "spec.kafka.storage.size", "type": "string"},
+			{"path": "spec.walStorage.size", "type": "string"}
+		]
+	}`
+	_ = os.WriteFile(filepath.Join(tmpDir, "strimzi.json"), []byte(jsonSpec), 0600)
+
+	reg := adapters.NewRegistry(tmpDir)
+	reg.Register(nil) // no-op
+	if err := reg.RegisterDeclarativeSpec(adapters.DeclarativeAdapterSpec{}); err == nil {
+		t.Fatalf("expected error for empty DeclarativeAdapterSpec")
+	}
+	// Replace existing adapter by name
+	_ = reg.RegisterDeclarativeSpec(adapters.DeclarativeAdapterSpec{
+		Name:                "strimzi-kafka",
+		Description:         "Updated Strimzi Kafka",
+		PrimaryGVK:          adapters.GVKDescriptor{APIVersion: "kafka.strimzi.io/v1beta2", Kind: "Kafka"},
+		PodLabelKeys:        []string{"strimzi.io/cluster"},
+		AutoRemediateMemory: false,
+		CRDSchemaFields: []k8s.CRDSchemaField{
+			{Path: "spec.kafka.resources.limits.memory", Type: "string"},
+			{Path: "spec.kafka.resources.requests.memory", Type: "string"},
+			{Path: "spec.kafka.storage.size", Type: "string"},
+			{Path: "spec.walStorage.size", Type: "string"},
+		},
+	})
+	meta := reg.ListMetadata()
+	if len(meta) < 2 {
+		t.Fatalf("expected >=2 adapters in ListMetadata, got %d", len(meta))
+	}
+
+	// Match via label
+	matched := reg.Match(types.DiagnosticEvent{
+		Namespace: "kafka",
+		Labels:    map[string]string{"strimzi.io/cluster": "my-kafka"},
+		Reason:    "OOMKilled",
+		ExitCode:  137,
+	})
+	if matched == nil || matched.Name() != "strimzi-kafka" {
+		t.Fatalf("expected strimzi-kafka match via label, got %v", matched)
+	}
+
+	// Match via ownershipChain
+	matchedChain := reg.Match(types.DiagnosticEvent{
+		Namespace: "kafka",
+		OwnershipChain: []types.OwnerChainLink{
+			{APIVersion: "kafka.strimzi.io/v1beta2", Kind: "Kafka", Name: "chain-kafka"},
+		},
+	})
+	if matchedChain == nil || matchedChain.Name() != "strimzi-kafka" {
+		t.Fatalf("expected strimzi-kafka match via OwnershipChain")
+	}
+
+	// Wildcard match via OwnershipChain for unknown CR
+	matchedWildcard := reg.Match(types.DiagnosticEvent{
+		Namespace: "custom",
+		OwnershipChain: []types.OwnerChainLink{
+			{APIVersion: "v1", Kind: "Pod", Name: "p-0"},
+			{APIVersion: "example.io/v1", Kind: "CustomApp", Name: "my-app"},
+		},
+	})
+	if matchedWildcard == nil || matchedWildcard.Name() != "universal-crd-ai-adapter" {
+		t.Fatalf("expected universal-crd-ai-adapter match via OwnershipChain")
+	}
+	if reg.Match(types.DiagnosticEvent{OwnerAPIVersion: "apps/v1", OwnerKind: "Deployment"}) != nil {
+		t.Fatalf("expected nil match for standard Deployment")
+	}
+
+	// BuildRemediationPlan with AutoRemediateMemory=false
+	plan, err := matched.BuildRemediationPlan(ctx, nil, types.DiagnosticEvent{
+		Namespace: "kafka",
+		Labels:    map[string]string{"strimzi.io/cluster": "my-kafka"},
+		Reason:    "OOMKilled",
+		ExitCode:  137,
+	})
+	if err != nil || plan.PrimaryAction.Policy != types.PolicyApprovalRequired {
+		t.Fatalf("expected APPROVAL_REQUIRED when AutoRemediateMemory=false, got %+v (%v)", plan, err)
+	}
+
+	// BuildRemediationPlan when exceeding Namespace ResourceQuota
+	quotaPlan, err := matched.BuildRemediationPlan(ctx, nil, types.DiagnosticEvent{
+		Namespace:        "kafka",
+		OwnerName:        "my-kafka",
+		Reason:           "OOMKilled",
+		ExitCode:         137,
+		CurrentMemoryLim: "1Gi",
+		QuotaMemoryLimit: "2Gi",
+		QuotaMemoryUsed:  "1536Mi",
+	})
+	if err != nil || quotaPlan.IssueType != types.IssueNamespaceQuotaExceed || len(quotaPlan.FollowUpActions) != 1 {
+		t.Fatalf("expected IssueNamespaceQuotaExceed with follow-up action, got %+v (%v)", quotaPlan, err)
+	}
+
+	// BuildRemediationPlan for WAL storage issue
+	walPlan, err := matched.BuildRemediationPlan(ctx, nil, types.DiagnosticEvent{
+		Namespace: "kafka",
+		OwnerName: "my-kafka",
+		Reason:    "WALDiskFull",
+		Message:   "WAL disk space exhausted",
+	})
+	if err != nil || walPlan.IssueType != types.IssuePVCCapacityExhausted {
+		t.Fatalf("expected IssuePVCCapacityExhausted for WAL issue, got %+v (%v)", walPlan, err)
+	}
+
+	// Test askOllamaForCRDFields via mock Ollama HTTP server returning markdown-fenced JSON
+	ollamaSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"choices": []map[string]any{
+				{
+					"message": map[string]string{
+						"content": "```json\n{\"updatedFields\":{\"spec.kafka.resources.limits.memory\":\"2Gi\"},\"reasoning\":\"AI selected spec.kafka.resources.limits.memory\"}\n```",
+					},
+				},
+			},
+		})
+	}))
+	defer ollamaSrv.Close()
+	t.Setenv("UPSTREAM_LLM_BASE_URL", ollamaSrv.URL)
+
+	aiPlan, err := matched.BuildRemediationPlan(ctx, nil, types.DiagnosticEvent{
+		Namespace: "kafka",
+		OwnerName: "my-kafka",
+		Reason:    "OOMKilled",
+		ExitCode:  137,
+	})
+	if err != nil || aiPlan.UpdatedFields["spec.kafka.resources.limits.memory"] != "2Gi" || !strings.Contains(aiPlan.RootCauseAnalysis, "AI selected") {
+		t.Fatalf("expected AI-selected fields from mock Ollama server, got %+v (%v)", aiPlan, err)
+	}
+}
+
 

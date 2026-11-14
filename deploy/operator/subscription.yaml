@@ -1,0 +1,56 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kube-doctor-system
+  labels:
+    openshift.io/cluster-monitoring: "true"
+---
+apiVersion: operators.coreos.com/v1
+kind: OperatorGroup
+metadata:
+  name: kube-doctor-operator-group
+  namespace: kube-doctor-system
+spec: {}
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: CatalogSource
+metadata:
+  name: kube-doctor-catalog
+  namespace: openshift-marketplace
+spec:
+  sourceType: grpc
+  image: ghcr.io/luigi/kube-doctor-operator-bundle:v1.35-ocp4.22
+  displayName: Kube-Doctor Autonomous SRE Operator Catalog
+  publisher: Kube-Doctor SRE
+---
+apiVersion: operators.coreos.com/v1alpha1
+kind: Subscription
+metadata:
+  name: kube-doctor-operator
+  namespace: kube-doctor-system
+spec:
+  channel: stable
+  name: kube-doctor-operator
+  source: kube-doctor-catalog
+  sourceNamespace: openshift-marketplace
+  installPlanApproval: Automatic
+---
+apiVersion: kubedoctor.io/v1alpha1
+kind: KubeDoctor
+metadata:
+  name: kube-doctor-cluster
+  namespace: kube-doctor-system
+spec:
+  mode: standalone
+  approvalMode: HYBRID
+  inClusterApproval: true
+  consolePlugin:
+    enabled: true
+  gitops:
+    github:
+      repository: "org/openshift-gitops-fleet"
+      baseBranch: "main"
+    gitlab:
+      webUrl: "https://gitlab.com"
+      repository: "org/openshift-gitops-fleet"
+      baseBranch: "main"

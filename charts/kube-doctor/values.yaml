@@ -1,0 +1,87 @@
+replicaCount: 1
+
+mode: standalone # standalone | hub | agent
+clusterId: "ocp-4-22-primary"
+hubUrl: ""
+
+image:
+  repository: ghcr.io/luigi/kube-doctor
+  pullPolicy: IfNotPresent
+  tag: "v1.35-ocp4.22"
+
+mcpSidecar:
+  enabled: true
+  image:
+    repository: quay.io/containers/kubernetes_mcp_server
+    tag: latest
+    pullPolicy: IfNotPresent
+  port: 8081
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 256Mi
+
+upstreamLLM:
+  baseURL: "http://127.0.0.1:11434"
+  apiKey: ""
+
+gitops:
+  approvalMode: "HYBRID" # IN_CLUSTER | GITHUB_PR | GITLAB_MR | HYBRID
+  inClusterApproval: true
+  repoURL: "https://github.com/org/openshift-gitops-fleet"
+  github:
+    enabled: false
+    clientId: ""
+    clientSecret: ""
+    oauthToken: ""
+    repository: "org/openshift-gitops-fleet"
+    baseBranch: "main"
+    webUrl: "https://github.com"
+    apiUrl: "https://api.github.com"
+  gitlab:
+    enabled: false
+    clientId: ""
+    clientSecret: ""
+    oauthToken: ""
+    repository: "org/openshift-gitops-fleet"
+    baseBranch: "main"
+    baseUrl: "https://gitlab.com"
+
+serviceAccount:
+  create: true
+  name: "kube-doctor"
+
+rbac:
+  create: true
+
+service:
+  type: ClusterIP
+  port: 8080
+
+openshift:
+  route:
+    enabled: false
+    host: ""
+    tls:
+      termination: edge
+      insecureEdgeTerminationPolicy: Redirect
+  consolePlugin:
+    enabled: false
+    name: kube-doctor-console-plugin
+    displayName: "Kube-Doctor SRE & GitOps Remediation"
+    image:
+      repository: ghcr.io/luigi/kube-doctor-console-plugin
+      tag: "v1.35-ocp4.22"
+      pullPolicy: IfNotPresent
+    port: 9443
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 256Mi
+  limits:
+    cpu: "1"
+    memory: 512Mi
