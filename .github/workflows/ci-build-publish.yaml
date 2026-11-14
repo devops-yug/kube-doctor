@@ -1,0 +1,163 @@
+name: Build, Test & Publish to GHCR
+
+on:
+  push:
+    branches: ["main", "master"]
+    tags: ["v*"]
+  pull_request:
+    branches: ["main", "master"]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  GO_VERSION: "1.23"
+  COVERAGE_THRESHOLD: "90.0"
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+
+jobs:
+  unit-test-and-coverage:
+    name: Unit Tests & >=90% Coverage Gate
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go ${{ env.GO_VERSION }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+
+      - name: Run go vet
+        run: go vet ./...
+
+      - name: Run unit tests with race detector & coverage profile
+        run: |
+          go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
+          go tool cover -func=coverage.out | tee coverage-summary.txt
+
+      - name: Enforce >= ${{ env.COVERAGE_THRESHOLD }}% code coverage gate
+        run: |
+          TOTAL_COV=$(go tool cover -func=coverage.out | grep '^total:' | awk '{print $3}' | tr -d '%')
+          echo "Total statement & decision coverage: ${TOTAL_COV}% (threshold: ${COVERAGE_THRESHOLD}%)"
+          awk -v cov="${TOTAL_COV}" -v thr="${COVERAGE_THRESHOLD}" 'BEGIN { if (cov + 0 < thr + 0) { print "Coverage " cov "% is below threshold " thr "%"; exit 1 } }'
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: go-coverage-report
+          path: |
+            coverage.out
+            coverage-summary.txt
+
+  helm-and-manifests-lint:
+    name: Lint Helm Chart & OpenShift Operator Manifests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+
+      - name: Lint Helm chart (standalone, hub, agent & OpenShift modes)
+        run: |
+          helm lint charts/kube-doctor
+          helm template kube-doctor charts/kube-doctor \
+            --set openshift.route.enabled=true \
+            --set openshift.consolePlugin.enabled=true \
+            --set gitops.github.enabled=true \
+            --set gitops.gitlab.enabled=true > /tmp/rendered-manifests.yaml
+
+  build-and-publish-ghcr:
+    name: Build Multi-Arch Images & Publish to GHCR
+    needs: [unit-test-and-coverage, helm-and-manifests-lint]
+    runs-on: ubuntu-latest
+    outputs:
+      image-digest: ${{ steps.build-main.outputs.digest }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU for multi-arch (amd64 + arm64)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry (GHCR)
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata for kube-doctor
+        id: meta-main
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix=sha-
+            type=raw,value=v1.35-ocp4.22,enable={{is_default_branch}}
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push kube-doctor image (linux/amd64, linux/arm64)
+        id: build-main
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta-main.outputs.tags }}
+          labels: ${{ steps.meta-main.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate SLSA Build Provenance Attestation
+        if: github.event_name != 'pull_request'
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-name: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          subject-digest: ${{ steps.build-main.outputs.digest }}
+          push-to-registry: true
+
+      - name: Build and push OpenShift Console Plugin image to GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: ./console-plugin
+          file: ./console-plugin/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-console-plugin:v1.35-ocp4.22
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-console-plugin:latest
+
+      - name: Build and push OpenShift Operator OLM Bundle image to GHCR
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./deploy/operator/bundle.Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-operator-bundle:v1.35-ocp4.22
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-operator-bundle:latest
+
+      - name: Package & Push Helm Chart to GHCR OCI Registry
+        if: github.event_name != 'pull_request'
+        run: |
+          helm package charts/kube-doctor --destination /tmp/charts
+          helm push /tmp/charts/kube-doctor-*.tgz oci://${{ env.REGISTRY }}/${{ github.repository_owner }}/charts
