@@ -1,5 +1,5 @@
 # Stage 1: Build the kube-doctor Go binary (supports native & cross-compilation for amd64/arm64/arm)
-FROM --platform=$BUILDPLATFORM golang:1.23-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:alpine AS builder
 
 ARG TARGETOS=linux
 ARG TARGETARCH

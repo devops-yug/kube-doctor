@@ -33,6 +33,7 @@ wandb/
 
 # Runtime & debug logs
 *.log
+logs_*.zip
 scripts/mcp_bridge_debug.log
 output.txt
 
@@ -49,3 +50,4 @@ Thumbs.db
 *.swo
 *~
 
+TODO.md
