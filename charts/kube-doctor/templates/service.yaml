@@ -3,6 +3,8 @@ kind: Service
 metadata:
   name: {{ include "kube-doctor.fullname" . }}
   namespace: {{ .Release.Namespace }}
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: {{ include "kube-doctor.fullname" . }}-serving-cert
   labels:
     {{- include "kube-doctor.labels" . | nindent 4 }}
 spec:
@@ -12,5 +14,9 @@ spec:
       targetPort: http
       protocol: TCP
       name: http
+    - port: {{ .Values.service.tlsPort | default 9443 }}
+      targetPort: https
+      protocol: TCP
+      name: https
   selector:
     {{- include "kube-doctor.selectorLabels" . | nindent 4 }}

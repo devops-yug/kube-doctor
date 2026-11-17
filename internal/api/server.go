@@ -8,16 +8,16 @@ import (
 	"strings"
 	"time"
 
-	"github.com/luigi/kube-doctor/internal/adapters"
-	"github.com/luigi/kube-doctor/internal/gitops"
-	"github.com/luigi/kube-doctor/internal/hub"
-	"github.com/luigi/kube-doctor/internal/k8s"
-	"github.com/luigi/kube-doctor/internal/llm"
-	"github.com/luigi/kube-doctor/internal/mcp"
-	"github.com/luigi/kube-doctor/internal/operator"
-	"github.com/luigi/kube-doctor/internal/remediation"
-	"github.com/luigi/kube-doctor/internal/types"
-	"github.com/luigi/kube-doctor/internal/watcher"
+	"github.com/devops-yug/kube-doctor/internal/adapters"
+	"github.com/devops-yug/kube-doctor/internal/gitops"
+	"github.com/devops-yug/kube-doctor/internal/hub"
+	"github.com/devops-yug/kube-doctor/internal/k8s"
+	"github.com/devops-yug/kube-doctor/internal/llm"
+	"github.com/devops-yug/kube-doctor/internal/mcp"
+	"github.com/devops-yug/kube-doctor/internal/operator"
+	"github.com/devops-yug/kube-doctor/internal/remediation"
+	"github.com/devops-yug/kube-doctor/internal/types"
+	"github.com/devops-yug/kube-doctor/internal/watcher"
 )
 
 // Server exposes the OpenAI-compatible Chat Completions API (/v1/chat/completions),
@@ -95,6 +95,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 func (s *Server) registerRoutes() {
 	s.mux.HandleFunc("/healthz", s.handleHealthz)
 	s.mux.HandleFunc("/ui", s.handleConsolePluginUI)
+	s.mux.HandleFunc("/plugin-manifest.json", s.handleConsolePluginManifest)
+	s.mux.HandleFunc("/plugin-entry.js", s.handleConsolePluginEntryJS)
 	s.mux.HandleFunc("/console-plugin/", s.handleConsolePluginUI)
 	s.mux.HandleFunc("/v1/models", s.handleModels)
 	s.mux.HandleFunc("/v1/chat/completions", s.handleChatCompletions)

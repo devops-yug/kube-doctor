@@ -41,7 +41,7 @@ metadata:
   name: {{ .Values.openshift.consolePlugin.name }}
   namespace: {{ .Release.Namespace }}
   annotations:
-    service.alpha.openshift.io/serving-cert-secret-name: {{ .Values.openshift.consolePlugin.name }}-cert
+    service.beta.openshift.io/serving-cert-secret-name: {{ .Values.openshift.consolePlugin.name }}-cert
   labels:
     {{- include "kube-doctor.labels" . | nindent 4 }}
 spec:
@@ -76,5 +76,5 @@ spec:
         service:
           name: {{ include "kube-doctor.fullname" . }}
           namespace: {{ .Release.Namespace }}
-          port: {{ .Values.service.port }}
+          port: {{ .Values.service.tlsPort | default 9443 }}
 {{- end -}}

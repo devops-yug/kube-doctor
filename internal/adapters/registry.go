@@ -9,8 +9,8 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/luigi/kube-doctor/internal/k8s"
-	"github.com/luigi/kube-doctor/internal/types"
+	"github.com/devops-yug/kube-doctor/internal/k8s"
+	"github.com/devops-yug/kube-doctor/internal/types"
 )
 
 // GVKDescriptor describes a Custom Resource Group/Version/Kind managed by an Operator.

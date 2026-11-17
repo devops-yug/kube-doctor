@@ -8,16 +8,16 @@ import (
 	"os"
 	"time"
 
-	"github.com/luigi/kube-doctor/internal/api"
-	"github.com/luigi/kube-doctor/internal/gitops"
-	"github.com/luigi/kube-doctor/internal/hub"
-	"github.com/luigi/kube-doctor/internal/k8s"
-	"github.com/luigi/kube-doctor/internal/llm"
-	"github.com/luigi/kube-doctor/internal/mcp"
-	"github.com/luigi/kube-doctor/internal/operator"
-	"github.com/luigi/kube-doctor/internal/rag"
-	"github.com/luigi/kube-doctor/internal/remediation"
-	"github.com/luigi/kube-doctor/internal/watcher"
+	"github.com/devops-yug/kube-doctor/internal/api"
+	"github.com/devops-yug/kube-doctor/internal/gitops"
+	"github.com/devops-yug/kube-doctor/internal/hub"
+	"github.com/devops-yug/kube-doctor/internal/k8s"
+	"github.com/devops-yug/kube-doctor/internal/llm"
+	"github.com/devops-yug/kube-doctor/internal/mcp"
+	"github.com/devops-yug/kube-doctor/internal/operator"
+	"github.com/devops-yug/kube-doctor/internal/rag"
+	"github.com/devops-yug/kube-doctor/internal/remediation"
+	"github.com/devops-yug/kube-doctor/internal/watcher"
 )
 
 func main() {
@@ -78,6 +78,36 @@ func run(ctx context.Context, args []string, listenFn func(srv *http.Server) err
 		Handler:      apiServer,
 		ReadTimeout:  30 * time.Second,
 		WriteTimeout: 90 * time.Second,
+	}
+
+	tlsPort := os.Getenv("TLS_PORT")
+	if tlsPort == "" {
+		tlsPort = "9443"
+	}
+	if tlsPort[0] != ':' {
+		tlsPort = ":" + tlsPort
+	}
+	certFile := os.Getenv("TLS_CERT_FILE")
+	if certFile == "" {
+		certFile = "/var/serving-cert/tls.crt"
+	}
+	keyFile := os.Getenv("TLS_KEY_FILE")
+	if keyFile == "" {
+		keyFile = "/var/serving-cert/tls.key"
+	}
+	if _, err := os.Stat(certFile); err == nil {
+		tlsSrv := &http.Server{
+			Addr:         tlsPort,
+			Handler:      apiServer,
+			ReadTimeout:  30 * time.Second,
+			WriteTimeout: 90 * time.Second,
+		}
+		go func() {
+			log.Printf("  - OpenShift ConsolePlugin HTTPS:   https://0.0.0.0%s (/plugin-manifest.json, /plugin-entry.js, /v1/*)", tlsPort)
+			if err := tlsSrv.ListenAndServeTLS(certFile, keyFile); err != nil && err != http.ErrServerClosed {
+				log.Printf("TLS server on %s stopped: %v", tlsPort, err)
+			}
+		}()
 	}
 
 	log.Printf("kube-doctor (Kubernetes >= 1.35 / OpenShift >= 4.22 Specialized LLM & Remediation Gateway) listening on %s [mode=%s, cluster=%s]",

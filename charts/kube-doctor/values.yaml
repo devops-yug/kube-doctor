@@ -5,7 +5,7 @@ clusterId: "ocp-4-22-primary"
 hubUrl: ""
 
 image:
-  repository: ghcr.io/luigi/kube-doctor
+  repository: ghcr.io/devops-yug/kube-doctor
   pullPolicy: IfNotPresent
   tag: "v1.35-ocp4.22"
 
@@ -60,6 +60,7 @@ rbac:
 service:
   type: ClusterIP
   port: 8080
+  tlsPort: 9443
 
 openshift:
   route:
@@ -73,7 +74,7 @@ openshift:
     name: kube-doctor-console-plugin
     displayName: "Kube-Doctor SRE & GitOps Remediation"
     image:
-      repository: ghcr.io/luigi/kube-doctor-console-plugin
+      repository: ghcr.io/devops-yug/kube-doctor-console-plugin
       tag: "v1.35-ocp4.22"
       pullPolicy: IfNotPresent
     port: 9443

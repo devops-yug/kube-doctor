@@ -8,17 +8,17 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/luigi/kube-doctor/internal/api"
-	"github.com/luigi/kube-doctor/internal/gitops"
-	"github.com/luigi/kube-doctor/internal/hub"
-	"github.com/luigi/kube-doctor/internal/k8s"
-	"github.com/luigi/kube-doctor/internal/llm"
-	"github.com/luigi/kube-doctor/internal/mcp"
-	"github.com/luigi/kube-doctor/internal/operator"
-	"github.com/luigi/kube-doctor/internal/rag"
-	"github.com/luigi/kube-doctor/internal/remediation"
-	"github.com/luigi/kube-doctor/internal/types"
-	"github.com/luigi/kube-doctor/internal/watcher"
+	"github.com/devops-yug/kube-doctor/internal/api"
+	"github.com/devops-yug/kube-doctor/internal/gitops"
+	"github.com/devops-yug/kube-doctor/internal/hub"
+	"github.com/devops-yug/kube-doctor/internal/k8s"
+	"github.com/devops-yug/kube-doctor/internal/llm"
+	"github.com/devops-yug/kube-doctor/internal/mcp"
+	"github.com/devops-yug/kube-doctor/internal/operator"
+	"github.com/devops-yug/kube-doctor/internal/rag"
+	"github.com/devops-yug/kube-doctor/internal/remediation"
+	"github.com/devops-yug/kube-doctor/internal/types"
+	"github.com/devops-yug/kube-doctor/internal/watcher"
 )
 
 func setupTestServer() (*api.Server, *k8s.Client, *mcp.K8sMCPClient) {
@@ -332,6 +332,18 @@ func TestAllHTTPGatewayEndpointsAndErrorPaths(t *testing.T) {
 	}
 	if rec := doReq(http.MethodGet, "/ui", ""); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), "OpenShift 4.22+") {
 		t.Fatalf("/ui failed: %d", rec.Code)
+	}
+	if rec := doReq(http.MethodGet, "/plugin-manifest.json", ""); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"loadScripts"`) {
+		t.Fatalf("/plugin-manifest.json failed: %d", rec.Code)
+	}
+	if rec := doReq(http.MethodGet, "/plugin-entry.js", ""); rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `loadPluginEntry`) {
+		t.Fatalf("/plugin-entry.js failed: %d", rec.Code)
+	}
+	if rec := doReq(http.MethodGet, "/console-plugin/plugin-manifest.json", ""); rec.Code != http.StatusOK {
+		t.Fatalf("/console-plugin/plugin-manifest.json failed: %d", rec.Code)
+	}
+	if rec := doReq(http.MethodGet, "/console-plugin/plugin-entry.js", ""); rec.Code != http.StatusOK {
+		t.Fatalf("/console-plugin/plugin-entry.js failed: %d", rec.Code)
 	}
 	if rec := doReq(http.MethodGet, "/v1/models", ""); rec.Code != http.StatusOK {
 		t.Fatalf("/v1/models failed: %d", rec.Code)

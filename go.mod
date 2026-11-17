@@ -1,4 +1,4 @@
-module github.com/luigi/kube-doctor
+module github.com/devops-yug/kube-doctor
 
 go 1.23
 

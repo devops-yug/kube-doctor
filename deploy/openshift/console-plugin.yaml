@@ -17,7 +17,8 @@ spec:
     spec:
       containers:
         - name: console-plugin
-          image: ghcr.io/luigi/kube-doctor-console-plugin:v1.35-ocp4.22
+          image: ghcr.io/devops-yug/kube-doctor-console-plugin:v1.35-ocp4.22
+          imagePullPolicy: Always
           ports:
             - containerPort: 9443
               name: https
@@ -38,7 +39,7 @@ metadata:
   name: kube-doctor-console-plugin
   namespace: kube-doctor-system
   annotations:
-    service.alpha.openshift.io/serving-cert-secret-name: kube-doctor-console-plugin-cert
+    service.beta.openshift.io/serving-cert-secret-name: kube-doctor-console-plugin-cert
 spec:
   ports:
     - name: https
@@ -69,4 +70,4 @@ spec:
         service:
           name: kube-doctor
           namespace: kube-doctor-system
-          port: 8080
+          port: 9443

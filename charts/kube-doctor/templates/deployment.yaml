@@ -26,9 +26,14 @@ spec:
             - name: http
               containerPort: {{ .Values.service.port }}
               protocol: TCP
+            - name: https
+              containerPort: {{ .Values.service.tlsPort | default 9443 }}
+              protocol: TCP
           env:
             - name: PORT
               value: {{ .Values.service.port | quote }}
+            - name: TLS_PORT
+              value: {{ .Values.service.tlsPort | default 9443 | quote }}
             - name: KUBE_DOCTOR_MODE
               value: {{ .Values.mode | quote }}
             - name: KUBE_DOCTOR_CLUSTER_ID
@@ -64,6 +69,10 @@ spec:
           envFrom:
             - secretRef:
                 name: {{ include "kube-doctor.fullname" . }}-gitops-oauth
+          volumeMounts:
+            - name: serving-cert
+              mountPath: /var/serving-cert
+              readOnly: true
           livenessProbe:
             httpGet:
               path: /healthz
@@ -95,9 +104,13 @@ spec:
           resources:
             {{- toYaml .Values.mcpSidecar.resources | nindent 12 }}
         {{- end }}
-      {{- if .Values.mcpSidecar.enabled }}
       volumes:
+        - name: serving-cert
+          secret:
+            secretName: {{ include "kube-doctor.fullname" . }}-serving-cert
+            optional: true
+        {{- if .Values.mcpSidecar.enabled }}
         - name: mcp-config
           configMap:
             name: {{ include "kube-doctor.fullname" . }}-mcp-config
-      {{- end }}
+        {{- end }}

@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/luigi/kube-doctor/internal/gitops"
-	"github.com/luigi/kube-doctor/internal/hub"
-	"github.com/luigi/kube-doctor/internal/k8s"
-	"github.com/luigi/kube-doctor/internal/rag"
-	"github.com/luigi/kube-doctor/internal/remediation"
-	"github.com/luigi/kube-doctor/internal/types"
-	"github.com/luigi/kube-doctor/internal/watcher"
+	"github.com/devops-yug/kube-doctor/internal/gitops"
+	"github.com/devops-yug/kube-doctor/internal/hub"
+	"github.com/devops-yug/kube-doctor/internal/k8s"
+	"github.com/devops-yug/kube-doctor/internal/rag"
+	"github.com/devops-yug/kube-doctor/internal/remediation"
+	"github.com/devops-yug/kube-doctor/internal/types"
+	"github.com/devops-yug/kube-doctor/internal/watcher"
 )
 
 // Server implements a Model Context Protocol (MCP) JSON-RPC 2.0 endpoint

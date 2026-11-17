@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/luigi/kube-doctor/internal/types"
+	"github.com/devops-yug/kube-doctor/internal/types"
 )
 
 type k8sPodList struct {

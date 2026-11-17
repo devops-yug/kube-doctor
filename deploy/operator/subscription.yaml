@@ -19,7 +19,7 @@ metadata:
   namespace: openshift-marketplace
 spec:
   sourceType: grpc
-  image: ghcr.io/luigi/kube-doctor-operator-bundle:v1.35-ocp4.22
+  image: ghcr.io/devops-yug/kube-doctor-operator-bundle:v1.35-ocp4.22
   displayName: Kube-Doctor Autonomous SRE Operator Catalog
   publisher: Kube-Doctor SRE
 ---

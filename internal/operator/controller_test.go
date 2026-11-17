@@ -7,10 +7,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/luigi/kube-doctor/internal/gitops"
-	"github.com/luigi/kube-doctor/internal/k8s"
-	"github.com/luigi/kube-doctor/internal/remediation"
-	"github.com/luigi/kube-doctor/internal/types"
+	"github.com/devops-yug/kube-doctor/internal/gitops"
+	"github.com/devops-yug/kube-doctor/internal/k8s"
+	"github.com/devops-yug/kube-doctor/internal/remediation"
+	"github.com/devops-yug/kube-doctor/internal/types"
 )
 
 func TestOperatorControllerReconcile(t *testing.T) {

@@ -7,10 +7,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/luigi/kube-doctor/internal/adapters"
-	"github.com/luigi/kube-doctor/internal/gitops"
-	"github.com/luigi/kube-doctor/internal/k8s"
-	"github.com/luigi/kube-doctor/internal/types"
+	"github.com/devops-yug/kube-doctor/internal/adapters"
+	"github.com/devops-yug/kube-doctor/internal/gitops"
+	"github.com/devops-yug/kube-doctor/internal/k8s"
+	"github.com/devops-yug/kube-doctor/internal/types"
 )
 
 // K8sMCPExecutor defines the interface for invoking tools on

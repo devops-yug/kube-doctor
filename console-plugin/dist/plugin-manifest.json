@@ -1,0 +1,79 @@
+{
+  "name": "kube-doctor-console-plugin",
+  "version": "1.35.0",
+  "displayName": "Kube-Doctor Autonomous SRE & GitOps Remediation",
+  "description": "Autonomous SRE LLM, Active Incidents, 8-Hop Lineage, In-Cluster RemediationRequest Approvals, and GitHub/GitLab OAuth GitOps for OpenShift >= 4.22",
+  "dependencies": {
+    "@console/pluginAPI": "*"
+  },
+  "loadScripts": [
+    "plugin-entry.js"
+  ],
+  "registrationMethod": "callback",
+  "extensions": [
+    {
+      "type": "console.page/route",
+      "properties": {
+        "exact": false,
+        "path": [
+          "/kube-doctor",
+          "/kube-doctor/incidents",
+          "/kube-doctor/approvals",
+          "/kube-doctor/gitops"
+        ],
+        "component": {
+          "$codeRef": "KubeDoctorDashboard"
+        }
+      }
+    },
+    {
+      "type": "console.navigation/section",
+      "properties": {
+        "id": "kube-doctor-nav-section",
+        "name": "Kube-Doctor SRE",
+        "perspective": "admin",
+        "insertBefore": "compute"
+      }
+    },
+    {
+      "type": "console.navigation/href",
+      "properties": {
+        "id": "kube-doctor-incidents-nav",
+        "name": "Active Incidents & Lineage",
+        "href": "/kube-doctor/incidents",
+        "perspective": "admin",
+        "section": "kube-doctor-nav-section"
+      }
+    },
+    {
+      "type": "console.navigation/href",
+      "properties": {
+        "id": "kube-doctor-approvals-nav",
+        "name": "In-Cluster & GitOps Approvals",
+        "href": "/kube-doctor/approvals",
+        "perspective": "admin",
+        "section": "kube-doctor-nav-section"
+      }
+    },
+    {
+      "type": "console.navigation/href",
+      "properties": {
+        "id": "kube-doctor-gitops-nav",
+        "name": "GitHub & GitLab OAuth",
+        "href": "/kube-doctor/gitops",
+        "perspective": "admin",
+        "section": "kube-doctor-nav-section"
+      }
+    },
+    {
+      "type": "console.navigation/href",
+      "properties": {
+        "id": "kube-doctor-observe-nav",
+        "name": "Kube-Doctor SRE",
+        "href": "/kube-doctor",
+        "perspective": "admin",
+        "section": "observe"
+      }
+    }
+  ]
+}

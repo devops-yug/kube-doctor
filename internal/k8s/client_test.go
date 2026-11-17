@@ -18,7 +18,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/luigi/kube-doctor/internal/types"
+	"github.com/devops-yug/kube-doctor/internal/types"
 )
 
 func TestMemoryAndPluralizeHelpers(t *testing.T) {

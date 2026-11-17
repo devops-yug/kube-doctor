@@ -14,7 +14,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/luigi/kube-doctor/internal/types"
+	"github.com/devops-yug/kube-doctor/internal/types"
 )
 
 // OAuthProviderConfig holds OAuth 2.0 Application credentials and repository settings

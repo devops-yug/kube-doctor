@@ -122,6 +122,10 @@ deploy-openshift:
 	oc apply -f deploy/openshift/deployment.yaml
 	oc apply -f deploy/openshift/console-plugin.yaml
 	oc -n kube-doctor-system rollout status deployment/kube-doctor --timeout=120s
+	oc -n kube-doctor-system rollout status deployment/kube-doctor-console-plugin --timeout=120s
+	@if ! oc get console.operator.openshift.io cluster -o jsonpath='{.spec.plugins[*]}' 2>/dev/null | grep -qw "kube-doctor-console-plugin"; then \
+		oc patch console.operator.openshift.io cluster --type=merge -p '{"spec":{"plugins":["kube-doctor-console-plugin"]}}' || true; \
+	fi
 
 ## Install or upgrade kube-doctor via Helm chart (charts/kube-doctor)
 helm-install:

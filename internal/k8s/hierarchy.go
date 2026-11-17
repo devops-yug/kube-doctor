@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/luigi/kube-doctor/internal/types"
+	"github.com/devops-yug/kube-doctor/internal/types"
 )
 
 // GenericK8sObject represents an arbitrary Kubernetes or OpenShift Custom Resource

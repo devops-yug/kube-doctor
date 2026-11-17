@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"os"
 	"testing"
 )
 
@@ -26,8 +27,13 @@ func TestRunEntrypoint(t *testing.T) {
 		t.Fatalf("expected :8080 and nil error, got addr=%q err=%v", boundAddr, err)
 	}
 
-	// 2. Custom PORT and --mode=hub
+	// 2. Custom PORT, TLS_PORT, TLS_CERT_FILE and --mode=hub
+	tmpCert := t.TempDir() + "/tls.crt"
+	_ = os.WriteFile(tmpCert, []byte("invalid-cert-for-fast-exit"), 0600)
 	t.Setenv("PORT", "9090")
+	t.Setenv("TLS_PORT", "19443")
+	t.Setenv("TLS_CERT_FILE", tmpCert)
+	t.Setenv("TLS_KEY_FILE", tmpCert)
 	err = run(ctx, []string{"--mode=hub"}, func(srv *http.Server) error {
 		boundAddr = srv.Addr
 		return nil

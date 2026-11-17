@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/luigi/kube-doctor/internal/k8s"
-	"github.com/luigi/kube-doctor/internal/types"
+	"github.com/devops-yug/kube-doctor/internal/k8s"
+	"github.com/devops-yug/kube-doctor/internal/types"
 )
 
 func TestGitOpsManagerApprovalsAndOAuth(t *testing.T) {

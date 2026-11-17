@@ -13,10 +13,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/luigi/kube-doctor/internal/k8s"
-	"github.com/luigi/kube-doctor/internal/remediation"
-	"github.com/luigi/kube-doctor/internal/types"
-	"github.com/luigi/kube-doctor/internal/watcher"
+	"github.com/devops-yug/kube-doctor/internal/k8s"
+	"github.com/devops-yug/kube-doctor/internal/remediation"
+	"github.com/devops-yug/kube-doctor/internal/types"
+	"github.com/devops-yug/kube-doctor/internal/watcher"
 )
 
 // Mode defines the runtime deployment mode of kube-doctor.

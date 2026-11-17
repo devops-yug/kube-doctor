@@ -64,25 +64,25 @@ kube-doctor/
   2. Whenever the `kube-doctor` pod restarts in Kubernetes (e.g., after `kubectl rollout restart`), an existing `kubectl port-forward svc/kube-doctor 8080:8080` process dies, breaking the IDE's MCP connection.
   3. GitHub Copilot's newer `copilot-cli` agent host (`agentHostMain.js`) sends `"method": "server/discover"` (`protocolVersion: "2026-07-28"`) and watches `.mcp.json` in the workspace root requiring `"type": "stdio"`.
 - **Why We Built It This Way**:
-  - [`scripts/mcp_stdio_bridge.py`](file:///home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py) runs as a fast local `stdio` process that:
+  - [`scripts/mcp_stdio_bridge.py`](scripts/mcp_stdio_bridge.py) runs as a fast local `stdio` process that:
     - Responds **instantly (<1ms)** to `initialize`, `server/discover`, and `tools/list` locally so VS Code never times out starting the MCP server even if the cluster is still booting.
     - Bypasses all system proxies (`urllib.request.ProxyHandler({})`) when talking to `127.0.0.1:8080`.
     - **Self-heals `kubectl port-forward`**: `ensure_port_forward()` checks if `127.0.0.1:8080` is reachable before every tool call and automatically spawns/restarts `kubectl -n kube-doctor-system port-forward svc/kube-doctor 8080:8080` in the background if the tunnel dropped.
-  - Both [`.mcp.json`](file:///home/luigi/projects/kube-doctor/.mcp.json) and [`.vscode/mcp.json`](file:///home/luigi/projects/kube-doctor/.vscode/mcp.json) are maintained in sync so both the VS Code UI and the `copilot-cli` subagent host attach `kube-doctor` to every chat session.
+  - Both [`.mcp.json`](.mcp.json) and [`.vscode/mcp.json`](.vscode/mcp.json) are maintained in sync so both the VS Code UI and the `copilot-cli` subagent host attach `kube-doctor` to every chat session.
 
 ### 2.2 Why `.github/agents/kube-doctor.agent.md` Omits `tools:` in YAML Frontmatter & Forbids Subagent Delegation
 - **Problem Discovered**:
   - In VS Code's `copilot-cli` agent host (`agentHostMain.js`), custom `.agent.md` frontmatter is parsed such that `tools: null` (omitted) grants **all available tools (including all MCP server tools)**, whereas specifying `tools: [kube-doctor/*, web/fetch]` caused `copilot-cli` to filter out MCP tools and leave only `web_fetch`.
   - Additionally, if the agent prompt included the literal string `http://localhost:8080/mcp`, the model attempted to call `web_fetch` on `http://localhost:8080/mcp` (which fails with `405` because `/mcp` is JSON-RPC `POST`) or delegated to a generic read-only subagent (`pod-incident-check`) that lacked MCP tools and fell back to `kubectl` in the terminal.
 - **Why We Built It This Way**:
-  - [`.github/agents/kube-doctor.agent.md`](file:///home/luigi/projects/kube-doctor/.github/agents/kube-doctor.agent.md) intentionally **omits the `tools:` frontmatter filter** and explicitly instructs the model **never** to delegate cluster checks to background subagents, **never** to run `kubectl` in a terminal, and **never** to `web_fetch` `localhost:8080`.
+  - [`.github/agents/kube-doctor.agent.md`](.github/agents/kube-doctor.agent.md) intentionally **omits the `tools:` frontmatter filter** and explicitly instructs the model **never** to delegate cluster checks to background subagents, **never** to run `kubectl` in a terminal, and **never** to `web_fetch` `localhost:8080`.
 
 ### 2.3 Why Autonomous Reconciliation + Alertmanager Webhooks + LLM (Instead of Static Rules Only)?
 - **Problem Discovered**:
   - Waiting for a human to type pod names, memory limits, and quota values into chat is reactive and slow. Conversely, blind script-based auto-remediation lacks context (pod logs, cgroup v2 PSI metrics, operator CRD status conditions, and RAG runbooks).
 - **Why We Built It This Way**:
-  - [`internal/watcher/watcher.go`](file:///home/luigi/projects/kube-doctor/internal/watcher/watcher.go) runs a continuous **15-second autonomous control loop** (`ScanAndRemediate`) AND exposes a **Prometheus Alertmanager v4 webhook receiver** (`POST /v1/webhooks/alertmanager`).
-  - Whenever an issue is detected, [`internal/k8s/scanner.go`](file:///home/luigi/projects/kube-doctor/internal/k8s/scanner.go) enriches the event with live Pod/Container specs, Owner hierarchy, and Namespace `ResourceQuota` usage, and passes it to [`DiagnoseAndRemediateEvent`](file:///home/luigi/projects/kube-doctor/internal/llm/engine.go#L81-L146) in [`internal/llm/engine.go`](file:///home/luigi/projects/kube-doctor/internal/llm/engine.go).
+  - [`internal/watcher/watcher.go`](internal/watcher/watcher.go) runs a continuous **15-second autonomous control loop** (`ScanAndRemediate`) AND exposes a **Prometheus Alertmanager v4 webhook receiver** (`POST /v1/webhooks/alertmanager`).
+  - Whenever an issue is detected, [`internal/k8s/scanner.go`](internal/k8s/scanner.go) enriches the event with live Pod/Container specs, Owner hierarchy, and Namespace `ResourceQuota` usage, and passes it to [`DiagnoseAndRemediateEvent`](internal/llm/engine.go#L81-L146) in [`internal/llm/engine.go`](internal/llm/engine.go).
   - The LLM engine pulls live telemetry from the `containers/kubernetes-mcp-server` sidecar (`pods_get`, `pods_log`, `resources_get`), retrieves K8s 1.35 / OCP 4.22 RAG runbooks, executes or stages the remediation, and queries the local **Ollama** model (`kube-doctor-1.35-ocp-4.22` at `http://127.0.0.1:11434`) to synthesize the root cause analysis.
 
 ### 2.4 Why Recursive `ownerReferences` Lineage Walking + Live CRD OpenAPI v3 Schema + AI Field Selection (Zero Hardcoded Go Operators)?
@@ -90,11 +90,11 @@ kube-doctor/
   - Standard Kubernetes controllers assume `Pod -> StatefulSet` or `Pod -> ReplicaSet -> Deployment`.
   - In real enterprise clusters, operators manage resources via Custom Resources (`Cluster.postgresql.cnpg.io`, `NooBaa.noobaa.io`, `Kafka.kafka.strimzi.io`, `PerconaPGCluster.pgv2.percona.com`, etc.), and hardcoding Go structs for each operator does not scale when new operators are installed in a cluster.
 - **Why We Built It This Way**:
-  1. **Recursive 8-Hop Lineage Walker ([`internal/k8s/hierarchy.go`](file:///home/luigi/projects/kube-doctor/internal/k8s/hierarchy.go))**: `ResolveOwnershipHierarchy` walks `metadata.ownerReferences` up to 8 levels deep to find the **Root Controlling Custom Resource**, and discovers sibling/sub-CRs (`BackingStore`, `BucketClass`, `NamespaceStore`, `Pooler`, `ScheduledBackup`).
-  2. **Live CRD OpenAPI v3 Schema Introspection ([`internal/k8s/crd_schema.go`](file:///home/luigi/projects/kube-doctor/internal/k8s/crd_schema.go))**:
-     - `InspectCRDSchemaAndInstance` queries the cluster's `/apis/apiextensions.k8s.io/v1/customresourcedefinitions/{plural}.{group}` endpoint AND the live Custom Resource instance (`.spec` and `.status`), extracting all candidate `.spec` field paths, types, and descriptions (or reading optional YAML hints from [`configs/adapters/*.yaml`](file:///home/luigi/projects/kube-doctor/configs/adapters/)).
-  3. **AI-Driven CRD Field Selection ([`internal/adapters/builtin.go`](file:///home/luigi/projects/kube-doctor/internal/adapters/builtin.go))**:
-     - Instead of hardcoding operator-specific Go structs, `universalAICRDAdapter` passes the **Problem Statement + Live CR `.spec` + CRD OpenAPI v3 Schema Fields** to the **Ollama LLM (`kube-doctor-1.35-ocp-4.22`)** via [`askOllamaForCRDFields`](file:///home/luigi/projects/kube-doctor/internal/adapters/builtin.go#L261-L343) (backed by schema-grounded field matching in [`matchFieldsFromCRDSchema`](file:///home/luigi/projects/kube-doctor/internal/adapters/builtin.go#L347-L428)).
+  1. **Recursive 8-Hop Lineage Walker ([`internal/k8s/hierarchy.go`](internal/k8s/hierarchy.go))**: `ResolveOwnershipHierarchy` walks `metadata.ownerReferences` up to 8 levels deep to find the **Root Controlling Custom Resource**, and discovers sibling/sub-CRs (`BackingStore`, `BucketClass`, `NamespaceStore`, `Pooler`, `ScheduledBackup`).
+  2. **Live CRD OpenAPI v3 Schema Introspection ([`internal/k8s/crd_schema.go`](internal/k8s/crd_schema.go))**:
+     - `InspectCRDSchemaAndInstance` queries the cluster's `/apis/apiextensions.k8s.io/v1/customresourcedefinitions/{plural}.{group}` endpoint AND the live Custom Resource instance (`.spec` and `.status`), extracting all candidate `.spec` field paths, types, and descriptions (or reading optional YAML hints from [`configs/adapters/*.yaml`](configs/adapters/)).
+  3. **AI-Driven CRD Field Selection ([`internal/adapters/builtin.go`](internal/adapters/builtin.go))**:
+     - Instead of hardcoding operator-specific Go structs, `universalAICRDAdapter` passes the **Problem Statement + Live CR `.spec` + CRD OpenAPI v3 Schema Fields** to the **Ollama LLM (`kube-doctor-1.35-ocp-4.22`)** via [`askOllamaForCRDFields`](internal/adapters/builtin.go#L261-L343) (backed by schema-grounded field matching in [`matchFieldsFromCRDSchema`](internal/adapters/builtin.go#L347-L428)).
      - The AI model returns the exact dot-path field(s) to update (e.g., `spec.resources.limits.memory`, `spec.storage.size`, `spec.coreResources.limits.memory`), and `kube-doctor` dynamically constructs and applies the JSON Merge Patch!
 
 ### 2.5 Why Single-Binary Multi-Cluster Mode (`--mode=standalone | hub | agent`)?
@@ -102,7 +102,7 @@ kube-doctor/
   - Maintaining separate codebases and container images for a central management server and spoke cluster agents creates version drift and deployment friction.
   - Furthermore, managed spoke clusters often sit behind NAT/firewalls where the central management plane cannot directly dial the spoke's Kubernetes API server.
 - **Why We Built It This Way**:
-  - [`cmd/kube-doctor/main.go`](file:///home/luigi/projects/kube-doctor/cmd/kube-doctor/main.go) and [`internal/hub/manager.go`](file:///home/luigi/projects/kube-doctor/internal/hub/manager.go) use a **single binary and container image** controlled via `--mode` or `KUBE_DOCTOR_MODE`:
+  - [`cmd/kube-doctor/main.go`](cmd/kube-doctor/main.go) and [`internal/hub/manager.go`](internal/hub/manager.go) use a **single binary and container image** controlled via `--mode` or `KUBE_DOCTOR_MODE`:
     - `standalone` (default): Runs the local watcher, remediation engine, MCP server, and Hub endpoints in one process.
     - `hub`: Central Multi-Cluster Fleet Control Plane (`GET/POST /v1/hub/clusters`), central LLM/RAG triage, central GitOps approvals, and per-cluster command queues.
     - `agent`: Runs inside a spoke cluster, scans local Pods/Nodes/Operator CRDs, pushes heartbeats and `DiagnosticEvent`s outbound to `KUBE_DOCTOR_HUB_URL`, and polls `GET /v1/hub/clusters/{clusterId}/commands` to execute approved/auto-remediated actions locally inside its own cluster boundary.
@@ -111,13 +111,13 @@ kube-doctor/
 - **Problem Discovered**:
   - On Kubernetes `1.36+` `kind` nodes (which use `containerd v2` with config version 4) combined with rootless Podman, `kind load docker-image` fails with a containerd config version check error.
 - **Why We Built It This Way**:
-  - In [`Makefile`](file:///home/luigi/projects/kube-doctor/Makefile#L51-L55), `make kind-load` pipes `podman save --format docker-archive` directly into `podman exec -i $$node ctr --namespace=k8s.io images import -`, which reliably loads images into `kind` nodes regardless of `containerd` config version.
+  - In [`Makefile`](Makefile#L51-L55), `make kind-load` pipes `podman save --format docker-archive` directly into `podman exec -i $$node ctr --namespace=k8s.io images import -`, which reliably loads images into `kind` nodes regardless of `containerd` config version.
 
 ---
 
 ## 3. Governance & Safety Matrix (Criticality & Severity Rules)
 
-All agents and contributors modifying [`internal/remediation/engine.go`](file:///home/luigi/projects/kube-doctor/internal/remediation/engine.go) or [`internal/adapters/`](file:///home/luigi/projects/kube-doctor/internal/adapters/builtin.go) **must** preserve these governance invariants:
+All agents and contributors modifying [`internal/remediation/engine.go`](internal/remediation/engine.go) or [`internal/adapters/`](internal/adapters/builtin.go) **must** preserve these governance invariants:
 
 | Scenario | Target Resource | Criticality / Severity | Policy | Execution Mechanism |
 | :--- | :--- | :--- | :--- | :--- |

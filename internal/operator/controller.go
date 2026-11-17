@@ -10,10 +10,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/luigi/kube-doctor/internal/gitops"
-	"github.com/luigi/kube-doctor/internal/k8s"
-	"github.com/luigi/kube-doctor/internal/remediation"
-	"github.com/luigi/kube-doctor/internal/types"
+	"github.com/devops-yug/kube-doctor/internal/gitops"
+	"github.com/devops-yug/kube-doctor/internal/k8s"
+	"github.com/devops-yug/kube-doctor/internal/remediation"
+	"github.com/devops-yug/kube-doctor/internal/types"
 )
 
 // KubeDoctorCRSpec represents the spec of a kubedoctor.io/v1alpha1 KubeDoctor operator Custom Resource.

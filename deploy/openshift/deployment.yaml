@@ -89,13 +89,18 @@ spec:
       serviceAccountName: kube-doctor
       containers:
         - name: kube-doctor
-          image: quay.io/org/kube-doctor:v1.35-ocp4.22
+          image: ghcr.io/devops-yug/kube-doctor:v1.35-ocp4.22
+          imagePullPolicy: Always
           ports:
             - containerPort: 8080
               name: http
+            - containerPort: 9443
+              name: https
           env:
             - name: PORT
               value: "8080"
+            - name: TLS_PORT
+              value: "9443"
             - name: K8S_MCP_SERVER_URL
               value: "http://127.0.0.1:8081/mcp"
             - name: GITOPS_REPO_URL
@@ -103,6 +108,10 @@ spec:
             # Point to in-cluster vLLM / Ollama serving the fine-tuned QLoRA weights
             - name: UPSTREAM_LLM_BASE_URL
               value: "http://kube-doctor-vllm.kube-doctor-system.svc.cluster.local:8000"
+          volumeMounts:
+            - name: serving-cert
+              mountPath: /var/serving-cert
+              readOnly: true
           resources:
             requests:
               cpu: "250m"
@@ -134,12 +143,18 @@ spec:
         - name: mcp-config
           configMap:
             name: kubernetes-mcp-server-config
+        - name: serving-cert
+          secret:
+            secretName: kube-doctor-serving-cert
+            optional: true
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: kube-doctor
   namespace: kube-doctor-system
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: kube-doctor-serving-cert
 spec:
   selector:
     app: kube-doctor
@@ -147,6 +162,9 @@ spec:
     - name: http
       port: 8080
       targetPort: 8080
+    - name: https
+      port: 9443
+      targetPort: 9443
 ---
 apiVersion: route.openshift.io/v1
 kind: Route
