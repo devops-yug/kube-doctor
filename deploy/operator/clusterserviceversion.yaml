@@ -1,0 +1,132 @@
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  name: kube-doctor-operator.v1.35.0
+  namespace: kube-doctor-system
+  annotations:
+    capabilities: Seamless Upgrades
+    categories: "OpenShift Optional, Monitoring, AI/Machine Learning"
+    console.openshift.io/plugins: '["kube-doctor-console-plugin"]'
+    containerImage: ghcr.io/luigi/kube-doctor:v1.35-ocp4.22
+    description: "Autonomous SRE LLM, RAG Engine, MCP Server, Multi-Cluster Fleet Control Plane, and GitOps/In-Cluster Remediation Operator for OpenShift >= 4.22 and Kubernetes >= 1.35"
+    operators.openshift.io/infrastructure-features: '["disconnected", "fips"]'
+    alm-examples: |-
+      [
+        {
+          "apiVersion": "kubedoctor.io/v1alpha1",
+          "kind": "KubeDoctor",
+          "metadata": {
+            "name": "kube-doctor-cluster",
+            "namespace": "kube-doctor-system"
+          },
+          "spec": {
+            "mode": "standalone",
+            "approvalMode": "HYBRID",
+            "inClusterApproval": true,
+            "consolePlugin": {
+              "enabled": true
+            },
+            "gitops": {
+              "github": {
+                "repository": "org/openshift-gitops-fleet",
+                "baseBranch": "main"
+              },
+              "gitlab": {
+                "webUrl": "https://gitlab.com",
+                "repository": "org/openshift-gitops-fleet",
+                "baseBranch": "main"
+              }
+            }
+          }
+        }
+      ]
+spec:
+  displayName: Kube-Doctor Autonomous SRE Operator (OpenShift 4.22+)
+  version: 1.35.0
+  maturity: stable
+  minKubeVersion: 1.35.0
+  provider:
+    name: Kube-Doctor SRE Team
+  installModes:
+    - type: OwnNamespace
+      supported: true
+    - type: SingleNamespace
+      supported: true
+    - type: MultiNamespace
+      supported: false
+    - type: AllNamespaces
+      supported: true
+  customresourcedefinitions:
+    owned:
+      - name: kubedoctors.kubedoctor.io
+        version: v1alpha1
+        kind: KubeDoctor
+        displayName: KubeDoctor Control Plane
+        description: Manages the kube-doctor SRE LLM, autonomous cluster watcher, OpenShift Console UI Plugin, and GitHub/GitLab OAuth GitOps integration.
+        specDescriptors:
+          - path: mode
+            displayName: Deployment Mode
+            description: "Operational mode: standalone, hub, or agent"
+          - path: approvalMode
+            displayName: Approval Governance Mode
+            description: "IN_CLUSTER, GITHUB_PR, GITLAB_MR, or HYBRID"
+          - path: inClusterApproval
+            displayName: Allow Direct In-Cluster Approval
+            x-descriptors:
+              - "urn:alm:descriptor:com.tectonic.ui:booleanSwitch"
+          - path: consolePlugin.enabled
+            displayName: Enable OpenShift Console UI Plugin
+            x-descriptors:
+              - "urn:alm:descriptor:com.tectonic.ui:booleanSwitch"
+      - name: remediationrequests.kubedoctor.io
+        version: v1alpha1
+        kind: RemediationRequest
+        displayName: Remediation Approval Request
+        description: Represents a cluster remediation action awaiting in-cluster admin approval or GitHub PR / GitLab MR merge.
+        specDescriptors:
+          - path: approved
+            displayName: Approve & Execute In-Cluster
+            description: Toggle to true to approve and execute this remediation directly inside the cluster.
+            x-descriptors:
+              - "urn:alm:descriptor:com.tectonic.ui:booleanSwitch"
+          - path: approvalMode
+            displayName: Approval Mode
+          - path: gitOpsPullRequest.url
+            displayName: GitHub PR / GitLab MR URL
+  install:
+    strategy: deployment
+    spec:
+      clusterPermissions:
+        - serviceAccountName: kube-doctor
+          rules:
+            - apiGroups: ["*"]
+              resources: ["*"]
+              verbs: ["get", "list", "watch", "create", "patch", "update", "delete"]
+      deployments:
+        - name: kube-doctor-operator
+          spec:
+            replicas: 1
+            selector:
+              matchLabels:
+                app: kube-doctor
+            template:
+              metadata:
+                labels:
+                  app: kube-doctor
+              spec:
+                serviceAccountName: kube-doctor
+                containers:
+                  - name: kube-doctor
+                    image: ghcr.io/luigi/kube-doctor:v1.35-ocp4.22
+                    args:
+                      - "--mode=standalone"
+                    ports:
+                      - containerPort: 8080
+                        name: http
+                    env:
+                      - name: PORT
+                        value: "8080"
+                      - name: KUBE_DOCTOR_APPROVAL_MODE
+                        value: "HYBRID"
+                      - name: KUBE_DOCTOR_INCLUSTER_APPROVAL
+                        value: "true"

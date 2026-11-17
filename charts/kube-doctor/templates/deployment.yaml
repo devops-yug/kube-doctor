@@ -1,0 +1,103 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "kube-doctor.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kube-doctor.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "kube-doctor.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "kube-doctor.selectorLabels" . | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "kube-doctor.serviceAccountName" . }}
+      containers:
+        - name: kube-doctor
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args:
+            - "--mode={{ .Values.mode }}"
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          env:
+            - name: PORT
+              value: {{ .Values.service.port | quote }}
+            - name: KUBE_DOCTOR_MODE
+              value: {{ .Values.mode | quote }}
+            - name: KUBE_DOCTOR_CLUSTER_ID
+              value: {{ .Values.clusterId | quote }}
+            - name: KUBE_DOCTOR_HUB_URL
+              value: {{ .Values.hubUrl | quote }}
+            - name: KUBE_DOCTOR_APPROVAL_MODE
+              value: {{ .Values.gitops.approvalMode | quote }}
+            - name: KUBE_DOCTOR_INCLUSTER_APPROVAL
+              value: {{ .Values.gitops.inClusterApproval | quote }}
+            - name: GITOPS_REPO_URL
+              value: {{ .Values.gitops.repoURL | quote }}
+            - name: GITHUB_GITOPS_REPO
+              value: {{ .Values.gitops.github.repository | quote }}
+            - name: GITHUB_BASE_BRANCH
+              value: {{ .Values.gitops.github.baseBranch | quote }}
+            - name: GITHUB_WEB_URL
+              value: {{ .Values.gitops.github.webUrl | quote }}
+            - name: GITHUB_API_URL
+              value: {{ .Values.gitops.github.apiUrl | quote }}
+            - name: GITLAB_GITOPS_PROJECT
+              value: {{ .Values.gitops.gitlab.repository | quote }}
+            - name: GITLAB_BASE_BRANCH
+              value: {{ .Values.gitops.gitlab.baseBranch | quote }}
+            - name: GITLAB_BASE_URL
+              value: {{ .Values.gitops.gitlab.baseUrl | quote }}
+            - name: UPSTREAM_LLM_BASE_URL
+              value: {{ .Values.upstreamLLM.baseURL | quote }}
+            {{- if .Values.mcpSidecar.enabled }}
+            - name: K8S_MCP_SERVER_URL
+              value: "http://127.0.0.1:{{ .Values.mcpSidecar.port }}/mcp"
+            {{- end }}
+          envFrom:
+            - secretRef:
+                name: {{ include "kube-doctor.fullname" . }}-gitops-oauth
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+        {{- if .Values.mcpSidecar.enabled }}
+        - name: kubernetes-mcp-server
+          image: "{{ .Values.mcpSidecar.image.repository }}:{{ .Values.mcpSidecar.image.tag }}"
+          imagePullPolicy: {{ .Values.mcpSidecar.image.pullPolicy }}
+          args:
+            - "--config"
+            - "/etc/kubernetes-mcp-server/config.toml"
+          ports:
+            - name: mcp-http
+              containerPort: {{ .Values.mcpSidecar.port }}
+          volumeMounts:
+            - name: mcp-config
+              mountPath: /etc/kubernetes-mcp-server
+              readOnly: true
+          resources:
+            {{- toYaml .Values.mcpSidecar.resources | nindent 12 }}
+        {{- end }}
+      {{- if .Values.mcpSidecar.enabled }}
+      volumes:
+        - name: mcp-config
+          configMap:
+            name: {{ include "kube-doctor.fullname" . }}-mcp-config
+      {{- end }}

@@ -1,0 +1,80 @@
+{{- if .Values.openshift.consolePlugin.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.openshift.consolePlugin.name }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kube-doctor.labels" . | nindent 4 }}
+    app: {{ .Values.openshift.consolePlugin.name }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.openshift.consolePlugin.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.openshift.consolePlugin.name }}
+    spec:
+      containers:
+        - name: console-plugin
+          image: "{{ .Values.openshift.consolePlugin.image.repository }}:{{ .Values.openshift.consolePlugin.image.tag }}"
+          imagePullPolicy: {{ .Values.openshift.consolePlugin.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.openshift.consolePlugin.port }}
+              name: https
+              protocol: TCP
+          volumeMounts:
+            - name: plugin-serving-cert
+              mountPath: /var/serving-cert
+              readOnly: true
+      volumes:
+        - name: plugin-serving-cert
+          secret:
+            secretName: {{ .Values.openshift.consolePlugin.name }}-cert
+            defaultMode: 420
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.openshift.consolePlugin.name }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    service.alpha.openshift.io/serving-cert-secret-name: {{ .Values.openshift.consolePlugin.name }}-cert
+  labels:
+    {{- include "kube-doctor.labels" . | nindent 4 }}
+spec:
+  ports:
+    - name: https
+      port: {{ .Values.openshift.consolePlugin.port }}
+      targetPort: https
+      protocol: TCP
+  selector:
+    app: {{ .Values.openshift.consolePlugin.name }}
+---
+apiVersion: console.openshift.io/v1
+kind: ConsolePlugin
+metadata:
+  name: {{ .Values.openshift.consolePlugin.name }}
+  labels:
+    {{- include "kube-doctor.labels" . | nindent 4 }}
+spec:
+  displayName: {{ .Values.openshift.consolePlugin.displayName | quote }}
+  backend:
+    type: Service
+    service:
+      name: {{ .Values.openshift.consolePlugin.name }}
+      namespace: {{ .Release.Namespace }}
+      port: {{ .Values.openshift.consolePlugin.port }}
+      basePath: /
+  proxy:
+    - alias: backend
+      authorization: UserToken
+      endpoint:
+        type: Service
+        service:
+          name: {{ include "kube-doctor.fullname" . }}
+          namespace: {{ .Release.Namespace }}
+          port: {{ .Values.service.port }}
+{{- end -}}

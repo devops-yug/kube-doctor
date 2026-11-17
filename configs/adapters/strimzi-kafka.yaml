@@ -1,0 +1,25 @@
+name: strimzi-kafka
+description: Strimzi / Red Hat AMQ Streams Kafka Operator (Kafka.kafka.strimzi.io/v1beta2 + KafkaNodePool + KafkaConnect)
+primaryGvk:
+  apiVersion: kafka.kafka.strimzi.io/v1beta2
+  kind: Kafka
+  plural: kafkas
+  role: rootController
+podLabelKeys:
+  - strimzi.io/cluster
+statusPhasePath: status.conditions
+autoRemediateMemory: true
+crdSchemaFields:
+  - path: spec.kafka.resources.limits.memory
+    type: string (Quantity)
+    description: Memory limit for Kafka broker pods (e.g. 4Gi, 8Gi)
+  - path: spec.kafka.resources.requests.memory
+    type: string (Quantity)
+    description: Memory request for Kafka broker pods (e.g. 2Gi, 4Gi)
+  - path: spec.kafka.storage.size
+    type: string (Quantity)
+    description: Persistent volume claim size for Kafka broker log storage (e.g. 100Gi)
+  - path: spec.kafka.replicas
+    type: integer
+    description: Number of Kafka broker replicas
+

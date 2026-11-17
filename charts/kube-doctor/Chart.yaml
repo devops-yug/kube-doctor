@@ -1,0 +1,18 @@
+apiVersion: v2
+name: kube-doctor
+description: Autonomous SRE LLM, RAG Engine, MCP Server, Multi-Cluster Hub/Spoke Fleet Control Plane, and OpenShift 4.22+ Operator & Console UI Plugin for Kubernetes >= 1.35
+type: application
+version: 0.1.0
+appVersion: "v1.35-ocp4.22"
+kubeVersion: ">= 1.35.0-0"
+keywords:
+  - kubernetes
+  - openshift
+  - sre
+  - llm
+  - mcp
+  - gitops
+  - operator
+  - console-plugin
+maintainers:
+  - name: kube-doctor-team

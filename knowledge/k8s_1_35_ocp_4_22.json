@@ -1,0 +1,42 @@
+[
+  {
+    "id": "k8s-1.35-inplace-pod-vertical-scaling",
+    "version": "Kubernetes >= 1.35 / OpenShift >= 4.22",
+    "category": "Resource Management & OOM Remediation",
+    "title": "In-Place Pod Vertical Scaling (InPlacePodVerticalScaling GA in 1.35+)",
+    "tags": ["oomkilled", "137", "memory", "resize", "statefulset", "pod", "resources", "1.35", "liveness", "cpu"],
+    "content": "In Kubernetes 1.35+ (and OpenShift 4.22+), InPlacePodVerticalScaling is GA and uses the pods/resize subresource. Containers define resizePolicy for cpu and memory (RestartNotRequired or RestartContainer). When a StatefulSet pod is OOMKilled (ExitCode 137) or CPU-throttled causing liveness probe failures, kube-doctor updates the workload resource spec via containers/kubernetes-mcp-server (resources_create_or_update) and patches pods/resize after verifying Namespace ResourceQuota and LimitRange."
+  },
+  {
+    "id": "k8s-1.35-statefulset-oom-quota-governance",
+    "version": "Kubernetes >= 1.35 / OpenShift >= 4.22",
+    "category": "StatefulSet, ResourceQuota, LimitRange & HPA Governance",
+    "title": "Handling ResourceQuota, LimitRange, and HPA Ceiling Violations",
+    "tags": ["statefulset", "oomkilled", "resourcequota", "limitrange", "hpa", "maxreplicas", "quota", "exceeded", "approval", "gitops"],
+    "content": "When vertical scaling (OOMKilled bump) or horizontal scaling (HPA ScalingLimited at maxReplicas) is blocked by a Namespace ResourceQuota, LimitRange, or HorizontalPodAutoscaler maxReplicas ceiling, kube-doctor classifies the issue with Policy=APPROVAL_REQUIRED, creates a RemediationRequest CRD (kubedoctor.io/v1alpha1), and opens a GitOps Pull Request to expand the governance boundary before applying the workload change."
+  },
+  {
+    "id": "ocp-4.22-machineset-node-and-mcp-remediation",
+    "version": "OpenShift >= 4.22 (Kubernetes 1.35+)",
+    "category": "Cluster Infrastructure, Machine API, Node NotReady & MachineConfigPool",
+    "title": "OpenShift 4.22+ Missing Machine, Node NotReady (Out-of-Service Taint), and MachineConfigPool Drift",
+    "tags": ["machineset", "machine", "openshift", "4.22", "autoscale", "node", "nodenotready", "machineconfigpool", "mcp", "clusteroperator", "etcd"],
+    "content": "In OpenShift 4.22+, worker capacity is managed via MachineSet (machine.openshift.io/v1beta1) and Cluster API (cluster.x-k8s.io/v1beta1). Missing machines trigger an approval-gated resources_scale on MachineSet. For NodeNotReady with unresponsive kubelet, Kubernetes 1.35+ supports the node.kubernetes.io/out-of-service:NoExecute taint to immediately detach RWO VolumeAttachments and reschedule stateful pods. Degraded ClusterOperators and MachineConfigPools are triaged via containers/kubernetes-mcp-server events_list and resources_get."
+  },
+  {
+    "id": "k8s-1.35-dra-sidecars-userns-and-storage",
+    "version": "Kubernetes >= 1.35 / OpenShift >= 4.22",
+    "category": "DRA, Native Sidecars, UserNamespaces & CSI Storage",
+    "title": "Kubernetes 1.35 DRA (resource.k8s.io/v1beta1), Native Sidecars, UserNamespaces, and Online Volume Expansion",
+    "tags": ["dra", "resourceclaim", "deviceclass", "sidecar", "usernamespaces", "scc", "pvc", "volumeattachment", "multi-attach", "storageclass"],
+    "content": "Kubernetes 1.35+ provides Dynamic Resource Allocation (resource.k8s.io/v1beta1 ResourceClaim, DeviceClass, ResourceSlice) for GPUs/NICs, native SidecarContainers (initContainers with restartPolicy: Always), UserNamespaces (hostUsers: false) integrating with OpenShift 4.22 restricted-v2 SCC, and online CSI volume expansion + VolumeAttributesClass for full PVCs."
+  },
+  {
+    "id": "ocp-4.22-networking-route-ovn-and-pdb",
+    "version": "Kubernetes >= 1.35 / OpenShift >= 4.22",
+    "category": "Networking, OVN-Kubernetes, OpenShift Route, DNS & PDB",
+    "title": "Service EndpointSlices, OVN-Kubernetes NetworkPolicy, OpenShift Route 503, CoreDNS, and PDB Drain Blockers",
+    "tags": ["service", "endpointslice", "networkpolicy", "ovn", "route", "503", "coredns", "dns", "pdb", "poddisruptionbudget", "imagepullbackoff", "imagedigestmirrorset"],
+    "content": "Covers empty EndpointSlices (selector mismatch), OVN-Kubernetes / AdminNetworkPolicy traffic drops, OpenShift Route 503 targetPort reconciliation, OpenShift DNS Operator cache tuning, ImageDigestMirrorSet (config.openshift.io/v1) for ImagePullBackOff, and Kubernetes 1.35 PDB unhealthyPodEvictionPolicy=AlwaysAllow to unblock node drains."
+  }
+]

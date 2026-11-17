@@ -1,0 +1,16 @@
+{
+  "servers": {
+    "kube-doctor": {
+      "type": "stdio",
+      "command": "python3",
+      "args": [
+        "/home/luigi/projects/kube-doctor/scripts/mcp_stdio_bridge.py"
+      ],
+      "env": {
+        "KUBE_DOCTOR_MCP_URL": "http://127.0.0.1:8080/mcp",
+        "NO_PROXY": "127.0.0.1,localhost",
+        "no_proxy": "127.0.0.1,localhost"
+      }
+    }
+  }
+}

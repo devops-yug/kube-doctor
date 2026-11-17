@@ -1,0 +1,164 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: kube-doctor-system
+  labels:
+    openshift.io/cluster-monitoring: "true"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-doctor
+  namespace: kube-doctor-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kube-doctor-remediator
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "pods/log", "events", "nodes", "nodes/proxy", "namespaces", "resourcequotas"]
+    verbs: ["get", "list", "watch", "patch", "update", "create"]
+  # Kubernetes 1.35+ GA In-Place Pod Vertical Scaling subresource
+  - apiGroups: [""]
+    resources: ["pods/resize"]
+    verbs: ["patch", "update"]
+  - apiGroups: ["apps"]
+    resources: ["statefulsets", "statefulsets/scale", "deployments", "deployments/scale", "daemonsets"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  # OpenShift 4.22+ Machine API & Cluster API
+  - apiGroups: ["machine.openshift.io"]
+    resources: ["machines", "machinesets", "machinesets/scale", "machinehealthchecks"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["project.openshift.io"]
+    resources: ["projects"]
+    verbs: ["get", "list"]
+  - apiGroups: ["kubedoctor.io"]
+    resources: ["remediationrequests", "remediationrequests/status"]
+    verbs: ["get", "list", "watch", "create", "patch", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kube-doctor-remediator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kube-doctor-remediator
+subjects:
+  - kind: ServiceAccount
+    name: kube-doctor
+    namespace: kube-doctor-system
+---
+# Configuration for github.com/containers/kubernetes-mcp-server sidecar
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: kubernetes-mcp-server-config
+  namespace: kube-doctor-system
+data:
+  config.toml: |
+    log_level = 2
+    port = "8081"
+    bind_address = "127.0.0.1"
+    disable_localhost_protection = true
+    stateless = true
+    list_output = "yaml"
+    toolsets = ["core", "config", "helm"]
+
+    [[denied_resources]]
+    group = ""
+    version = "v1"
+    kind = "Secret"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-doctor
+  namespace: kube-doctor-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-doctor
+  template:
+    metadata:
+      labels:
+        app: kube-doctor
+    spec:
+      serviceAccountName: kube-doctor
+      containers:
+        - name: kube-doctor
+          image: quay.io/org/kube-doctor:v1.35-ocp4.22
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: PORT
+              value: "8080"
+            - name: K8S_MCP_SERVER_URL
+              value: "http://127.0.0.1:8081/mcp"
+            - name: GITOPS_REPO_URL
+              value: "https://github.com/org/openshift-gitops-fleet"
+            # Point to in-cluster vLLM / Ollama serving the fine-tuned QLoRA weights
+            - name: UPSTREAM_LLM_BASE_URL
+              value: "http://kube-doctor-vllm.kube-doctor-system.svc.cluster.local:8000"
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
+            limits:
+              cpu: "1"
+              memory: "512Mi"
+        # Sidecar: github.com/containers/kubernetes-mcp-server
+        - name: kubernetes-mcp-server
+          image: quay.io/containers/kubernetes_mcp_server:latest
+          args:
+            - "--config"
+            - "/etc/kubernetes-mcp-server/config.toml"
+          ports:
+            - containerPort: 8081
+              name: mcp-http
+          volumeMounts:
+            - name: mcp-config
+              mountPath: /etc/kubernetes-mcp-server
+              readOnly: true
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+            limits:
+              cpu: "500m"
+              memory: "256Mi"
+      volumes:
+        - name: mcp-config
+          configMap:
+            name: kubernetes-mcp-server-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kube-doctor
+  namespace: kube-doctor-system
+spec:
+  selector:
+    app: kube-doctor
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8080
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: kube-doctor-api
+  namespace: kube-doctor-system
+spec:
+  to:
+    kind: Service
+    name: kube-doctor
+  port:
+    targetPort: http
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect

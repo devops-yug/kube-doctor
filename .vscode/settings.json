@@ -1,0 +1,23 @@
+{
+  "chat.mcp.discovery.enabled": {
+    "claude-desktop": true,
+    "copilot": true,
+    "windsurf": true,
+    "cursor-global": true,
+    "cursor-workspace": true
+  },
+  "github.copilot.chat.customOAIModels": {
+    "kube-doctor-1.35-ocp-4.22": {
+      "name": "Kube-Doctor (K8s 1.35+ / OCP 4.22+)",
+      "url": "http://localhost:8080/v1/chat/completions",
+      "toolCalling": true,
+      "vision": false,
+      "thinking": false,
+      "maxInputTokens": 8192,
+      "maxOutputTokens": 4096,
+      "requiresAPIKey": false
+    }
+  },
+  "chat.mcp.access": "all"
+}
+

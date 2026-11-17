@@ -1,0 +1,98 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: kubedoctors.kubedoctor.io
+spec:
+  group: kubedoctor.io
+  names:
+    kind: KubeDoctor
+    listKind: KubeDoctorList
+    plural: kubedoctors
+    singular: kubedoctor
+    shortNames:
+      - kd
+  scope: Namespaced
+  versions:
+    - name: v1alpha1
+      served: true
+      storage: true
+      subresources:
+        status: {}
+      additionalPrinterColumns:
+        - name: Mode
+          type: string
+          jsonPath: .spec.mode
+        - name: ApprovalMode
+          type: string
+          jsonPath: .spec.approvalMode
+        - name: ConsolePlugin
+          type: boolean
+          jsonPath: .spec.consolePlugin.enabled
+        - name: Phase
+          type: string
+          jsonPath: .status.phase
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                mode:
+                  type: string
+                  enum: ["standalone", "hub", "agent"]
+                  default: "standalone"
+                approvalMode:
+                  type: string
+                  enum: ["IN_CLUSTER", "GITHUB_PR", "GITLAB_MR", "HYBRID"]
+                  default: "HYBRID"
+                inClusterApproval:
+                  type: boolean
+                  default: true
+                consolePlugin:
+                  type: object
+                  properties:
+                    enabled:
+                      type: boolean
+                      default: true
+                gitops:
+                  type: object
+                  properties:
+                    github:
+                      type: object
+                      properties:
+                        clientId:
+                          type: string
+                        repository:
+                          type: string
+                        baseBranch:
+                          type: string
+                        webUrl:
+                          type: string
+                        apiUrl:
+                          type: string
+                    gitlab:
+                      type: object
+                      properties:
+                        clientId:
+                          type: string
+                        repository:
+                          type: string
+                        baseBranch:
+                          type: string
+                        webUrl:
+                          type: string
+                        apiUrl:
+                          type: string
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+              properties:
+                phase:
+                  type: string
+                consolePluginEnabled:
+                  type: boolean
+                pendingApprovals:
+                  type: integer
+                lastReconciledAt:
+                  type: string

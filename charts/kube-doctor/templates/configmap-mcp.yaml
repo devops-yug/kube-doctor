@@ -1,0 +1,23 @@
+{{- if .Values.mcpSidecar.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "kube-doctor.fullname" . }}-mcp-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "kube-doctor.labels" . | nindent 4 }}
+data:
+  config.toml: |
+    log_level = 2
+    port = "{{ .Values.mcpSidecar.port }}"
+    bind_address = "127.0.0.1"
+    disable_localhost_protection = true
+    stateless = true
+    list_output = "yaml"
+    toolsets = ["core", "config", "helm"]
+
+    [[denied_resources]]
+    group = ""
+    version = "v1"
+    kind = "Secret"
+{{- end -}}

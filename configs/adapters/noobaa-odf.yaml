@@ -1,0 +1,30 @@
+name: noobaa-odf
+description: OpenShift Data Foundation (ODF) & NooBaa 5-CRD Object Gateway Hierarchy (StorageCluster -> NooBaa -> BackingStore -> BucketClass -> NamespaceStore)
+primaryGvk:
+  apiVersion: noobaa.io/v1alpha1
+  kind: NooBaa
+  plural: noobaas
+  role: controller
+podLabelKeys:
+  - noobaa-core
+statusPhasePath: status.phase
+autoRemediateMemory: true
+crdSchemaFields:
+  - path: spec.coreResources.limits.memory
+    type: string (Quantity)
+    description: Memory limit for the noobaa-core StatefulSet pod managed by the NooBaa CR (e.g. 4Gi, 8Gi)
+  - path: spec.coreResources.requests.memory
+    type: string (Quantity)
+    description: Memory request for the noobaa-core StatefulSet pod (e.g. 2Gi, 4Gi)
+  - path: spec.dbResources.limits.memory
+    type: string (Quantity)
+    description: Memory limit for the noobaa-db-pg PostgreSQL database pod (e.g. 4Gi, 8Gi)
+  - path: spec.dbResources.requests.memory
+    type: string (Quantity)
+    description: Memory request for the noobaa-db-pg PostgreSQL database pod (e.g. 2Gi, 4Gi)
+  - path: spec.endpoints.resources.limits.memory
+    type: string (Quantity)
+    description: Memory limit for S3 noobaa-endpoint pods
+  - path: spec.pvPoolDefaultStorageClass
+    type: string
+    description: Default StorageClass for NooBaa PV-pool BackingStores
